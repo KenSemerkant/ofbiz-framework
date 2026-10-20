@@ -21,4 +21,7 @@ include(
     ":platform:demo-svc:demo-application",
     ":platform:demo-svc:demo-adapters:adapters-rest",
     ":platform:demo-svc:demo-adapters:adapters-grpc",
+    ":microservices:identity-svc:identity-domain",
+    ":microservices:identity-svc:identity-application",
+    ":microservices:identity-svc:identity-adapters:adapters-rest",
 )

@@ -81,7 +81,7 @@ Evidence: `platform/observability/20-verify.sh` → ALL CHECKS PASSED.
 
 ## P1-F1 identity-svc
 **Epic: OIDC issuer (CG: external token accepted by demo route)**
-- **S1 (L):** Spring Authorization Server: auth-code+PKCE, client-credentials, JWKS endpoint. AC: [ ] OIDC discovery doc served [ ] token for test client validates at gateway [ ] refresh flow works [ ] password grant absent (security check).
+- **S1 (L):** Spring Authorization Server: auth-code+PKCE, client-credentials, JWKS endpoint. AC: [x] OIDC discovery doc served (`DiscoveryDocumentTest`) [ ] token for test client validates at gateway (gateway slice pending) [x] refresh flow works (`AuthorizationCodeFlowTest`: auth-code+PKCE login → code exchange → refresh grant) [x] password grant absent (asserted in discovery test; Boot 4 property-driven authorization server — no grant configured, none advertised). Evidence: `./gradlew build` green, 4/4 tests in `identity-adapters/adapters-rest`.
 - **S2 (M):** Credential store + Flyway schema + user CRUD admin API. AC: [ ] create/verify user roundtrip [ ] Shiro-compatible hashing [ ] audit event emitted on login.
 - **S3 (M):** Party-link projection consumer (stub for Phase 2). AC: [ ] consumes `party.party.*` into local projection table [ ] idempotent replay proven (restart, zero duplicates).
 
