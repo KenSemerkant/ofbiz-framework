@@ -89,9 +89,9 @@ Evidence: `platform/observability/20-verify.sh` → ALL CHECKS PASSED.
 
 ## P1-F2 gateway
 **Epic: edge (CG: routing+authn+ratelimit)**
-- **S1 (M):** Spring Cloud Gateway + JWKS JWT filter + route table. AC: [x] `/api/v1/demo/**` → demo-svc 200 [x] expired/absent token → 401 [x] unknown context → 404 not 5xx. Evidence: `GatewayRoutingTest` (7 tests, real Redis Testcontainer + stub upstreams).
+- **S1 (M):** Spring Cloud Gateway + JWKS JWT filter + route table. AC: [x] `/api/v1/demo/**` → demo-svc 200 [x] expired/absent token → 401 [x] unknown context → 404 not 5xx. Evidence: `GatewayRoutingTest` (7 tests, real Redis Testcontainer + stub upstreams; test decoder is HS256, live JWKS wiring remains for CG-1).
 - **S2 (S):** Rate limit (Redis). AC: [x] burst over limit → 429 with Retry-After. Evidence: `GatewayRoutingTest.burstGets429WithRetryAfter`.
-- **S3 (M):** Strangler default route → monolith (staging monolith via docker image + JWT→header bridge). AC: [x] `https://<domain>/webtools/...` proxies to monolith [x] host-header config generated for monolith [x] trace spans gateway→monolith. Evidence: `GatewayRoutingTest.monolithBridgeForwardsIdentityHostAndTraceParent` proves proxy, `X-Auth-User`, pinned Host and incoming `traceparent` propagation; span export itself is covered by P0-F3 (zipkin receiver).
+- **S3 (M):** Strangler default route → monolith (staging monolith via docker image + JWT→header bridge). AC: [x] `https://<domain>/webtools/...` proxies to monolith [x] host-header config generated for monolith [ ] trace spans gateway→monolith. Evidence: `GatewayRoutingTest.monolithBridgeForwardsIdentityHostAndTraceParent` proves proxy (HTTP stub; the TLS URI is configured), `X-Auth-User`, pinned Host and incoming `traceparent` propagation; actual span export from gateway is not yet asserted in a test.
 - **S4 (S):** CORS + security headers. AC: [x] preflight OK for SPA origin [x] HSTS/CSP headers present. Evidence: `GatewayRoutingTest.corsPreflightAndSecurityHeaders`.
 
 ## P1-F3 audit-svc
