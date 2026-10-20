@@ -34,17 +34,23 @@ resource "null_resource" "kind_cluster" {
   triggers = {
     cluster_name = var.cluster_name
     workers      = var.worker_count
-    # recreate when the cluster definition changes
-    config_sha = filesha256("${path.module}/kind.yaml.tpl")
+    # recreate when the rendered cluster definition changes
+    config_sha = sha256(templatefile("${path.module}/kind.yaml.tpl", {
+      cluster_name = var.cluster_name
+      workers      = [for i in range(var.worker_count) : i]
+    }))
   }
 
   provisioner "local-exec" {
     command = <<-EOT
       set -e
       kind get clusters | grep -qx '${var.cluster_name}' && exit 0
-      sed -e 's/__CLUSTER_NAME__/${var.cluster_name}/g' \
-          -e 's/__WORKER_REPLICAS__/${var.worker_count}/g' \
-          '${path.module}/kind.yaml.tpl' > /tmp/${var.cluster_name}-kind.yaml
+      cat > /tmp/${var.cluster_name}-kind.yaml <<'KIND'
+${templatefile("${path.module}/kind.yaml.tpl", {
+  cluster_name = var.cluster_name
+  workers      = [for i in range(var.worker_count) : i]
+})}
+KIND
       kind create cluster --config /tmp/${var.cluster_name}-kind.yaml
     EOT
   }

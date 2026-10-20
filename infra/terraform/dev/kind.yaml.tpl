@@ -1,9 +1,9 @@
-# Rendered by terraform (infra/terraform/dev/main.tf) — placeholders
-# __CLUSTER_NAME__ / __WORKER_REPLICAS__. Keep node/port layout in sync
-# with platform/kind/cluster.yaml.
+# Rendered by terraform (infra/terraform/dev/main.tf) with cluster_name and
+# one worker node per worker_count.
+# Keep node/port layout in sync with platform/kind/cluster.yaml.
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
-name: __CLUSTER_NAME__
+name: ${cluster_name}
 nodes:
   - role: control-plane
     kubeadmConfigPatches:
@@ -20,5 +20,6 @@ nodes:
       - containerPort: 443
         hostPort: 443
         protocol: TCP
+%{ for worker in workers ~}
   - role: worker
-    replicas: __WORKER_REPLICAS__
+%{ endfor ~}

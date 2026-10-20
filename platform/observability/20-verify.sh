@@ -44,7 +44,12 @@ kubectl -n ofbiz rollout status deploy/obs-curl --timeout=180s >/dev/null
 sleep 20
 
 echo "==> AC1: Jaeger services"
-SVC_JSON="$(kubectl -n ${NS} exec deploy/jaeger -- wget -qO- http://localhost:16686/api/services 2>/dev/null || true)"
+SVC_JSON=""
+for i in $(seq 1 30); do
+  SVC_JSON="$(kubectl -n ${NS} exec deploy/jaeger -- wget -qO- http://localhost:16686/api/services 2>/dev/null || true)"
+  echo "${SVC_JSON}" | grep -q '"data":\["' && break
+  sleep 2
+done
 if echo "${SVC_JSON}" | grep -q '"data":\["'; then
   echo "PASS: Jaeger ingesting OTLP traces (self-service visible)"
   echo "KNOWN-ISSUE-1: Istio 1.31 minimal-profile mesh-span emission not firing;"
@@ -73,12 +78,22 @@ echo "${DS}"
 [ "$(echo "${DS}" | wc -l | tr -d ' ')" -ge 4 ] && echo "PASS: 4 datasources" || { echo "FAIL: datasources missing"; FAIL=1; }
 
 echo "==> AC4: Loki logs for namespace=ofbiz"
-LOKI=$(kubectl -n ${NS} exec deploy/loki -- wget -qO- \
-  'http://localhost:3100/loki/api/v1/query_range?query=%7Bjob%3D%22containerlogs%22%7D%20%7C%3D%20%22_ofbiz_%22&limit=1' 2>/dev/null || true)
+LOKI=""
+for i in $(seq 1 60); do
+  LOKI=$(kubectl -n ${NS} exec deploy/loki -- wget -qO- \
+    'http://localhost:3100/loki/api/v1/query_range?query=%7Bjob%3D%22containerlogs%22%7D%20%7C%3D%20%22_ofbiz_%22&limit=1' 2>/dev/null || true)
+  echo "${LOKI}" | grep -q '"values":\[\[' && break
+  sleep 2
+done
 echo "${LOKI}" | grep -q '"values":\[\[' && echo "PASS: loki has ofbiz container logs (filename-matched)" || { echo "FAIL: loki empty for ofbiz: ${LOKI:0:150}"; FAIL=1; }
 
 echo "==> AC5: OpenSearch ofbiz-logs index"
-OS_IDX=$(kubectl -n ${NS} exec opensearch-0 -- curl -s http://localhost:9200/_cat/indices 2>/dev/null || true)
+OS_IDX=""
+for i in $(seq 1 60); do
+  OS_IDX=$(kubectl -n ${NS} exec opensearch-0 -- curl -s http://localhost:9200/_cat/indices 2>/dev/null || true)
+  echo "${OS_IDX}" | grep -q "ofbiz-logs" && break
+  sleep 2
+done
 echo "${OS_IDX}"
 echo "${OS_IDX}" | grep -q "ofbiz-logs" && echo "PASS: ofbiz-logs indexed" || { echo "FAIL: index missing"; FAIL=1; }
 
