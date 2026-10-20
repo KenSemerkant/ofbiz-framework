@@ -1,0 +1,18 @@
+# Dev-only issuer/Redis endpoints and the local monolith's self-signed cert.
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${IDENTITY_ISSUER:http://localhost:8080}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+  cloud:
+    gateway:
+      server:
+        webflux:
+          httpclient:
+            ssl:
+              use-insecure-trust-manager: true
