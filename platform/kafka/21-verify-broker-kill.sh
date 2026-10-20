@@ -5,8 +5,12 @@
 set -euo pipefail
 
 NAMESPACE="ofbiz"
-TOPIC="p0-verify-broker-kill"
+TOPIC="p0-verify-broker-kill-$(date +%s)" # unique per run
 MSGS=100
+cleanup() {
+  kubectl -n "${NAMESPACE}" delete kafkatopic "${TOPIC}" --ignore-not-found >/dev/null 2>&1 || true
+}
+trap cleanup EXIT
 
 echo "==> Creating topic ${TOPIC} (rf 3, min.isr 2)"
 kubectl -n "${NAMESPACE}" apply -f - <<EOF

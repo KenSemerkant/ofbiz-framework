@@ -5,7 +5,7 @@
 set -euo pipefail
 
 NAMESPACE="ofbiz"
-TOPIC="p0-verify-roundtrip"
+TOPIC="p0-verify-roundtrip-$(date +%s)" # unique per run: re-runs must not see old messages
 MSG="phase0-$(date +%s)"
 
 echo "==> Creating topic ${TOPIC} (replication 3)"

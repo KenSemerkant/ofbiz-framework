@@ -19,14 +19,17 @@ spec:
         port: 9093
         type: internal
         tls: true
+    authorization:
+      type: simple
     config:
-      # ACL story (P0-F2-S2): KafkaUser principals + least-privilege ACLs are
-      # declared in platform/helm/topics/10-create.sh, but broker-side simple
-      # authorization is NOT enabled on this Strimzi 1.3.0 / Kafka 4.3.1
-      # combined-node local cluster: super.users and per-user produce checks
-      # behaved inconsistently (see issues/ note in IMPLEMENTATION.md).
-      # Enforcement evidence deferred to the cloud profile with dedicated
-      # controller nodes.
+      # ACL story (P0-F2-S2): simple authz is ON so KafkaUser ACL manifests
+      # are valid, but allow-everyone keeps the unauthenticated internal
+      # listener open for local verify tooling — i.e., enforcement is
+      # PARTIAL locally (super.users + per-user checks misbehaved on this
+      # Strimzi 1.3.0 / Kafka 4.3.1 combined-node cluster; full enforcement
+      # evidence deferred to the cloud profile). Cloud profile: flip to
+      # "false" + tls-auth on every listener.
+      allow.everyone.if.no.acl.found: "true"
       offsets.topic.replication.factor: 3
       transaction.state.log.replication.factor: 3
       transaction.state.log.min.isr: 2

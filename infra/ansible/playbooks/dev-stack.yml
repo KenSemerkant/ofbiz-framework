@@ -10,8 +10,9 @@
 # Tags:  ansible-playbook playbooks/dev-stack.yml --tags kafka
 - name: Dev stack on kind
   hosts: dev
+  gather_facts: false # macOS system python breaks the setup module; unused
   vars:
-    repo_root: "{{ playbook_dir }}/../.."
+    repo_root: "{{ playbook_dir }}/../../.."
   tasks:
     - name: Preflight — kubectl reaches the cluster
       ansible.builtin.command: kubectl get nodes
