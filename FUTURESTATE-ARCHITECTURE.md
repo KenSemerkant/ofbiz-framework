@@ -54,7 +54,7 @@ Decisions locked 2026-10-16 brainstorming session:
 | D7 | Async | Kafka event-driven | Streams, outbox, selective event sourcing |
 | D8 | Platform | Kubernetes + service mesh | Istio recommended, Linkerd acceptable |
 | D9 | Identity | Spring Authorization Server | OIDC/JWT; party data stays in party-svc |
-| D10 | Stack | Java 21 + Spring Boot 3.3.x | Clean architecture per service |
+| D10 | Stack | Java 21 + Spring Boot 4.0.x (ADR-015) | Clean architecture per service |
 
 **Amendments to global CLAUDE.md for this program:**
 1. Kafka replaces RabbitMQ as the event backbone (D7).

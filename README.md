@@ -14,7 +14,7 @@ This README describes the program repository. The monolith's own upstream README
 ├── LOWLEVEL.md                  # Current monolith implementation reference
 ├── FUTURESTATE-ARCHITECTURE.md  # Target microservices architecture (design)
 ├── FUTURESTATE-LOWLEVEL.md      # Target-state implementation reference (blueprint)
-├── adr/                         # ADRs 001-006 (monolith) + 007-014 (migration)
+├── adr/                         # ADRs 001-006 (monolith) + 007-015 (migration)
 ├── CLAUDE.md  AGENTS.md         # Repo rules for Claude sessions / coding agents
 ├── IMPLEMENTATION.md            # Delivery plan (phases/features/stories/gates)
 ├── issues/                      # Story + gate tracking (63 files)
@@ -68,7 +68,7 @@ Native (non-docker): `cd monolith && ./gradlew ofbiz` (requires JDK 17; run `sh 
 
 ## Future State: Microservices
 
-**16 independently deployable services** — Java 21, Spring Boot 3.3, clean architecture (domain/application/adapters/infrastructure per service), database-per-service, Kafka event backbone (outbox pattern), Kubernetes + Istio mesh, Spring Cloud Gateway, Spring Authorization Server (OIDC), Angular 17+ SPA frontend.
+**16 independently deployable services** — Java 21, Spring Boot 4.0.x (ADR-015), clean architecture (domain/application/adapters/infrastructure per service), database-per-service, Kafka event backbone (outbox pattern), Kubernetes + Istio mesh, Spring Cloud Gateway, Spring Authorization Server (OIDC), Angular 17+ SPA frontend.
 
 | Group | Services |
 |---|---|

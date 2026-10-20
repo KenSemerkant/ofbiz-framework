@@ -35,6 +35,8 @@
 - [x] CI pipeline builds the convention-plugin Spring Boot service and pushes an image to GHCR (green run 39450018861); CD deploy step is cloud-profile — the shared Helm chart deploy itself is verified locally via `platform/helm/20-verify.sh` (zero-downtime rolling update, mTLS mesh)
 - [x] Repo scaffold: `buildSrc` convention plugins compile; ArchUnit layering test enforces domain-purity on a sample module (P0-F4: `./gradlew build` green, red-green evidence in `DemoConformanceTest`)
 
+**Re-verified 2026-10-20** on a freshly recreated `kind-ofbiz` (`infra/dev/up.sh`): `10-verify-mtls.sh`, `certmanager/20-verify.sh`, `vault/20-verify.sh`, `storage/20-verify.sh`, `kafka/20-verify.sh`, `kafka/21-verify-broker-kill.sh` (100/100, 0 duplicates) and `helm/20-verify.sh` (39,803 requests, 0 failures) all passed. The observability verifier needed one re-run while the OpenSearch index warmed up.
+
 ## P0-F1 Cluster & Service Mesh
 **Epic: provision K8s + Istio (CG: cluster ready, mesh strict mTLS)**
 - **S1 (M):** Provision cluster, `ofbiz` namespace, Istio with `PeerAuth: STRICT`. AC: [x] sidecar-injected namespace exists [x] test pod pair: plaintext call fails, mTLS call succeeds [x] cluster access doc — local profile: `platform/README.md` §Local cluster (kind) (cloud `platform/terraform` README comes with the target cluster). Evidence: `platform/bootstrap/10-verify-mtls.sh` → ALL CHECKS PASSED.
@@ -63,7 +65,7 @@ Evidence: `platform/observability/20-verify.sh` → ALL CHECKS PASSED.
 - **S1 (L):** `buildSrc` convention plugins (`java-library`, `spring-boot-service`, `grpc`, `contracts-test`). AC: [x] plugins applied to `platform/demo-svc` compile [x] gRPC codegen produces stubs [x] Boot image built (Boot 4.0.6 per ADR-015 — trivy gate unfixable on 3.3) [x] scanned — trivy HIGH/CRITICAL gate green (0 findings; debian13 base + BOM patch-ahead overrides) [x] pushed — `ghcr.io/kensemerkant/demo-svc:{sha,latest}`, green run 39450018861.
 - **S2 (M):** Shared Helm `service-chart`. AC: [x] demo-svc deploys with HPA, PDB, readiness [x] rolling update zero-downtime — `platform/helm/20-verify.sh`: 44,665 requests, 0 failures during upgrade.
 - **S3 (M):** Pipeline: build → test → contract-publish → image → staging deploy. AC: [x] green run on trunk (39450018861: build+test, trivy gate, contracts job, GHCR push; staging-deploy step is cloud-profile — local kind has no CI-reachable cluster) [x] broken test blocks merge — PR #1 with a deliberately failing test → red run 39452335126 (build-test fail), closed unmerged.
-- **S4 (S):** ArchUnit layering rule in conventions. AC: [x] rule fails on a sample violation (`DemoConformanceTest.violationIsRejected`) [x] passes on clean module.
+- **S4 (S):** ArchUnit layering rule in conventions. AC: [x] rule fails on a sample violation (`DemoConformanceTest.violationIsRejected`) [x] passes on clean module. Correction: every service now checks the **full tree with adapters on the classpath** (`ServiceArchitectureTest` in demo/identity/audit/notification); the rule was fixed from "application may not be accessed by any layer" to "may only be accessed by adapters/infrastructure".
 
 ---
 
@@ -73,34 +75,34 @@ Evidence: `platform/observability/20-verify.sh` → ALL CHECKS PASSED.
 
 **CG-1:**
 - [ ] OIDC login flow issues a JWT usable against a gateway demo route
-- [ ] gateway routes to demo-svc with JWT validation + rate limit proven (429 on burst)
-- [ ] audit-svc consumes a demo topic wildcard and stores events queryably
-- [ ] notification-svc sends a test email on `notification.requested.v1`
-- [ ] search-svc indexes a demo document and answers a query via API
+- [x] gateway routes to demo-svc with JWT validation + rate limit proven (429 on burst) — `GatewayRoutingTest`
+- [x] audit-svc consumes a demo topic wildcard and stores events queryably — `AuditIngestTest`
+- [x] notification-svc sends a test email on `notification.requested.v1` — `NotificationDeliveryTest`
+- [ ] search-svc indexes a demo document and answers a query via API (domain model + unit tests only)
 - [ ] All 5 services: CI green, dashboards live, mTLS-only, DLQ wired
 
 ## P1-F1 identity-svc
 **Epic: OIDC issuer (CG: external token accepted by demo route)**
-- **S1 (L):** Spring Authorization Server: auth-code+PKCE, client-credentials, JWKS endpoint. AC: [x] OIDC discovery doc served (`DiscoveryDocumentTest`) [ ] token for test client validates at gateway (gateway slice pending) [x] refresh flow works (`AuthorizationCodeFlowTest`: auth-code+PKCE login → code exchange → refresh grant) [x] password grant absent (asserted in discovery test; Boot 4 property-driven authorization server — no grant configured, none advertised). Evidence: `./gradlew build` green, 4/4 tests in `identity-adapters/adapters-rest`.
-- **S2 (M):** Credential store + Flyway schema + user CRUD admin API. AC: [ ] create/verify user roundtrip [ ] Shiro-compatible hashing [ ] audit event emitted on login.
-- **S3 (M):** Party-link projection consumer (stub for Phase 2). AC: [ ] consumes `party.party.*` into local projection table [ ] idempotent replay proven (restart, zero duplicates).
+- **S1 (L):** Spring Authorization Server: auth-code+PKCE, client-credentials, JWKS endpoint. AC: [x] OIDC discovery doc served (`DiscoveryDocumentTest`) [ ] token for test client validates at gateway (gateway slice pending) [x] refresh flow works (`AuthorizationCodeFlowTest`: auth-code+PKCE login → code exchange → refresh grant) [x] password grant absent (asserted in discovery test; Boot 4 property-driven authorization server — no grant configured, none advertised). Evidence: `./gradlew build` green; identity adapter suite 9/9 (Postgres Testcontainers; Kafka disabled for these three tests).
+- **S2 (M):** Credential store + Flyway schema + user CRUD admin API. AC: [x] create/verify user roundtrip [x] Shiro-compatible hashing (PBKDF2 + legacy `$SHA$`, `OfbizPasswordHasherTest`) [x] audit event emitted on login. Evidence: `UserCrudLoginAuditTest` (201 admin / 403 plain user / 401 anonymous, outbox row `identity.login.succeeded`), `./gradlew build` green.
+- **S3 (M):** Party-link projection consumer (stub for Phase 2). AC: [x] consumes `party.party.*` into local projection table [x] idempotent replay proven (restart, zero duplicates). Evidence: `PartyProjectionConsumerTest` (Kafka 4 + Postgres Testcontainers: row count 1 after consumer restart and replay).
 
 ## P1-F2 gateway
 **Epic: edge (CG: routing+authn+ratelimit)**
-- **S1 (M):** Spring Cloud Gateway + JWKS JWT filter + route table. AC: [ ] `/api/v1/demo/**` → demo-svc 200 [ ] expired/absent token → 401 [ ] unknown context → 404 not 5xx.
-- **S2 (S):** Rate limit (Redis). AC: [ ] burst over limit → 429 with Retry-After.
-- **S3 (M):** Strangler default route → monolith (staging monolith via docker image + JWT→header bridge). AC: [ ] `https://<domain>/webtools/...` proxies to monolith [ ] host-header config generated for monolith [ ] trace spans gateway→monolith.
-- **S4 (S):** CORS + security headers. AC: [ ] preflight OK for SPA origin [ ] HSTS/CSP headers present.
+- **S1 (M):** Spring Cloud Gateway + JWKS JWT filter + route table. AC: [x] `/api/v1/demo/**` → demo-svc 200 [x] expired/absent token → 401 [x] unknown context → 404 not 5xx. Evidence: `GatewayRoutingTest` (7 tests, real Redis Testcontainer + stub upstreams).
+- **S2 (S):** Rate limit (Redis). AC: [x] burst over limit → 429 with Retry-After. Evidence: `GatewayRoutingTest.burstGets429WithRetryAfter`.
+- **S3 (M):** Strangler default route → monolith (staging monolith via docker image + JWT→header bridge). AC: [x] `https://<domain>/webtools/...` proxies to monolith [x] host-header config generated for monolith [x] trace spans gateway→monolith. Evidence: `GatewayRoutingTest.monolithBridgeForwardsIdentityHostAndTraceParent` proves proxy, `X-Auth-User`, pinned Host and incoming `traceparent` propagation; span export itself is covered by P0-F3 (zipkin receiver).
+- **S4 (S):** CORS + security headers. AC: [x] preflight OK for SPA origin [x] HSTS/CSP headers present. Evidence: `GatewayRoutingTest.corsPreflightAndSecurityHeaders`.
 
 ## P1-F3 audit-svc
-- **S1 (M):** Wildcard consumer + partitioned Postgres store. AC: [ ] events from 3 test topics persisted in order [ ] monthly partition created [ ] query API returns by time+topic with pagination.
-- **S2 (S):** Secret-audit event schema + storage. AC: [ ] test secret event stored + alert on high severity.
+- **S1 (M):** Wildcard consumer + partitioned Postgres store. AC: [x] events from 3 test topics persisted in order [x] monthly partition created [x] query API returns by time+topic with pagination. Evidence: `AuditIngestTest` (3 topics, ordered query, page envelope, `audit_events_y2026m10` partition, replay idempotency).
+- **S2 (S):** Secret-audit event schema + storage. AC: [x] test secret event stored + alert on high severity. Evidence: `AuditIngestTest` (HIGH event → `notification.requested.v1` alert payload).
 
 ## P1-F4 notification-svc
-- **S1 (M):** `notification.requested.v1` consumer + SMTP adapter + templates. AC: [ ] test command → email received (mailhog staging) [ ] retry then DLQ on failure injection [ ] template render with locale.
+- **S1 (M):** `notification.requested.v1` consumer + SMTP adapter + templates. AC: [x] test command → email received (mailhog staging) [x] retry then DLQ on failure injection [x] template render with locale. Evidence: `NotificationDeliveryTest` (GreenMail, German locale, redelivery deduped), `NotificationDlqTest` (retry → `notification.requested.v1.dlq`), `ClasspathTemplateRendererTest`.
 
 ## P1-F5 search-svc
-- **S1 (L):** OpenSearch + consumer framework + query API. AC: [ ] index doc via event [ ] gRPC + REST query returns hit [ ] reindex-from-topic command rebuilds index.
+- **S1 (L):** OpenSearch + consumer framework + query API. AC: [ ] index doc via event [ ] gRPC + REST query returns hit [ ] reindex-from-topic command rebuilds index. Current state: pure domain model (`SearchDocument`, `SearchQuery`, `SearchResult`, `SearchIndex` port) with `SearchDomainTest`; application/adapters projects are still empty.
 
 ---
 

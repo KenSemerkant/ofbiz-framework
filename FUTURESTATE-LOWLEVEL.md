@@ -31,12 +31,12 @@ ofbiz-msa/
 ```
 
 **Parent conventions (every service):**
-- Java 21, Spring Boot 3.3.x, Gradle Kotlin DSL (Kotlin for build scripts only unless a service opts in).
+- Java 21, Spring Boot 4.0.x (ADR-015), Gradle Kotlin DSL (Kotlin for build scripts only unless a service opts in).
 - `buildSrc` convention plugins: `ofbiz-msa.java-library` (domain), `ofbiz-msa.spring-boot-service` (adapters/infra), `ofbiz-msa.grpc` (protobuf codegen), `ofbiz-msa.contracts-test` (contract verification).
 - Virtual threads: `spring.threads.virtual.enabled=true`; structured concurrency in sagas.
 - Dependencies *only* inward: `adapters|infrastructure → application → domain`. Enforced by ArchUnit test in each module.
 
-**Platform BOM pins:** Boot 3.3.x, gRPC 1.6x, kafka-clients 3.7.x, Postgres 16 driver, OTel 2.x, Flyway 10, Testcontainers 1.19.
+**Platform BOM pins:** Boot 4.0.x (ADR-015), gRPC 1.6x, kafka-clients 4.x, Postgres 16 driver, OTel 2.x, Flyway 10+, Testcontainers 2.x.
 
 ## 2. Entity Ownership Assignment (904 entities)
 

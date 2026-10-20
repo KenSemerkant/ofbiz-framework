@@ -16,7 +16,7 @@ platform/
   certmanager/                # cert-manager + istio ingress + wildcard TLS
   vault/                      # Vault dev + Secrets Store CSI (P0-F1-S3)
   helm/                       # umbrella + service charts; topics/ = Kafka topic+ACL conventions
-  terraform/                  # cloud equivalent of kind/ (added when cluster target chosen)
+# Cluster lifecycle: ../infra/terraform (kind) + ../infra/ansible (stack)
 ```
 
 ## Local cluster (kind)
