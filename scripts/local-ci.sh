@@ -10,11 +10,24 @@ cd "${ROOT}"
 echo "==> [1/4] Build, unit + contract tests (ArchUnit enforced)"
 ./gradlew build
 
-echo "==> [2/4] Service image"
-docker build -t demo-svc:local platform/demo-svc
+echo "==> [2/4] Service images"
+SERVICES=(
+  "demo-svc:platform/demo-svc"
+  "identity-svc:microservices/identity-svc"
+  "gateway:microservices/gateway"
+  "audit-svc:microservices/audit-svc"
+  "notification-svc:microservices/notification-svc"
+)
+for entry in "${SERVICES[@]}"; do
+  name="${entry%%:*}"
+  dir="${entry#*:}"
+  docker build -t "${name}:local" "${dir}"
+done
 
 echo "==> [3/4] Trivy gate (HIGH/CRITICAL, unfixed only)"
-trivy image --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 demo-svc:local
+for entry in "${SERVICES[@]}"; do
+  trivy image --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 "${entry%%:*}:local"
+done
 
 echo "==> [4/4] Avro contracts gate (Apicurio, BACKWARD)"
 docker rm -f local-ci-apicurio >/dev/null 2>&1 || true
@@ -43,8 +56,12 @@ echo "    incompatible register → HTTP ${CODE}"
 
 if [ "${PUSH:-0}" = "1" ]; then
   echo "==> Pushing to GHCR"
-  docker tag demo-svc:local "ghcr.io/kensemerkant/demo-svc:local"
-  docker push ghcr.io/kensemerkant/demo-svc:local
+  for entry in "${SERVICES[@]}"; do
+    name="${entry%%:*}"
+    image="ghcr.io/kensemerkant/${name}:local"
+    docker tag "${name}:local" "${image}"
+    docker push "${image}"
+  done
 fi
 
 echo "LOCAL CI PASSED — same gates as .github/workflows/ci.yml"
