@@ -31,7 +31,7 @@
 **Phase completion gate (CG-0):** every item below checked with evidence links:
 - [x] `kubectl get pods -A` green on cluster; mesh-injected namespace `ofbiz` exists (local kind: all pods Ready; `platform/bootstrap/10-verify-mtls.sh` → ALL CHECKS PASSED)
 - [x] Kafka (Strimzi) + Schema Registry reachable from a test pod; topic create/consume roundtrip proven (`platform/kafka/20-verify.sh` roundtrip PASS, `21-verify-broker-kill.sh` 100/100 no loss, schema-registry deploy in `platform/kafka/10-install.sh`)
-- [ ] OTel collector receiving spans/metrics from a demo deployment; Jaeger trace and Grafana dashboard visible (local profile stack verified earlier — see P0-F3; re-run `platform/observability/20-verify.sh` for current evidence)
+- [x] OTel stack receiving traces/metrics; Jaeger services + Grafana dashboards visible (`platform/observability/20-verify.sh` → ALL CHECKS PASSED 2026-10-20, all five stores; mesh spans flow via the zipkin receiver — KNOWN-ISSUE-1 OTLP-provider caveat noted in `10-install.sh`)
 - [x] CI pipeline builds the convention-plugin Spring Boot service and pushes an image to GHCR (green run 39450018861); CD deploy step is cloud-profile — the shared Helm chart deploy itself is verified locally via `platform/helm/20-verify.sh` (zero-downtime rolling update, mTLS mesh)
 - [x] Repo scaffold: `buildSrc` convention plugins compile; ArchUnit layering test enforces domain-purity on a sample module (P0-F4: `./gradlew build` green, red-green evidence in `DemoConformanceTest`)
 
@@ -62,7 +62,7 @@ Evidence: `platform/observability/20-verify.sh` → ALL CHECKS PASSED.
 **Epic: build conventions (CG: hello-world service shipped through full pipeline)**
 - **S1 (L):** `buildSrc` convention plugins (`java-library`, `spring-boot-service`, `grpc`, `contracts-test`). AC: [x] plugins applied to `platform/demo-svc` compile [x] gRPC codegen produces stubs [x] Boot image built (Boot 4.0.6 per ADR-015 — trivy gate unfixable on 3.3) [x] scanned — trivy HIGH/CRITICAL gate green (0 findings; debian13 base + BOM patch-ahead overrides) [x] pushed — `ghcr.io/kensemerkant/demo-svc:{sha,latest}`, green run 39450018861.
 - **S2 (M):** Shared Helm `service-chart`. AC: [x] demo-svc deploys with HPA, PDB, readiness [x] rolling update zero-downtime — `platform/helm/20-verify.sh`: 44,665 requests, 0 failures during upgrade.
-- **S3 (M):** Pipeline: build → test → contract-publish → image → staging deploy. AC: [x] green run on trunk (39450018861: build+test, trivy gate, contracts job, GHCR push; staging-deploy step is cloud-profile — local kind has no CI-reachable cluster) [ ] broken test blocks merge — red runs 39430486272/39443740095 prove non-green blocks, but a deliberately-broken-TEST red run is still owed.
+- **S3 (M):** Pipeline: build → test → contract-publish → image → staging deploy. AC: [x] green run on trunk (39450018861: build+test, trivy gate, contracts job, GHCR push; staging-deploy step is cloud-profile — local kind has no CI-reachable cluster) [x] broken test blocks merge — PR #1 with a deliberately failing test → red run 39452335126 (build-test fail), closed unmerged.
 - **S4 (S):** ArchUnit layering rule in conventions. AC: [x] rule fails on a sample violation (`DemoConformanceTest.violationIsRejected`) [x] passes on clean module.
 
 ---

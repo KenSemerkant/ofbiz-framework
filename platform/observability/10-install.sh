@@ -8,13 +8,14 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 NS="observability"
 
-echo "==> Pointing Istio mesh tracing at Jaeger OTLP"
+echo "==> Pointing Istio mesh tracing at Jaeger (zipkin receiver)"
+# zipkin, not otlp: on Istio 1.31 minimal profile the OTLP provider doesn't
+# emit mesh spans (KNOWN-ISSUE-1) while the zipkin receiver path does.
 istioctl install --set profile=minimal --skip-confirmation \
   --set meshConfig.enableTracing=true \
-  --set "meshConfig.extensionProviders[0].name=otel-tracing" \
-  --set "meshConfig.extensionProviders[0].otlp.service=jaeger-collector.observability.svc.cluster.local" \
-  --set "meshConfig.extensionProviders[0].otlp.port=4317" \
-  --set "meshConfig.defaultProviders.tracing[0]=otel-tracing" >/dev/null
+  --set "meshConfig.extensionProviders[0].name=zipkin" \
+  --set "meshConfig.extensionProviders[0].zipkin.url=http://jaeger-collector.observability.svc.cluster.local:9411/api/v2/spans" \
+  --set "meshConfig.defaultProviders.tracing[0]=zipkin" >/dev/null
 
 echo "==> Applying observability stack"
 kubectl apply -f "${SCRIPT_DIR}/observability-stack.yaml" >/dev/null
