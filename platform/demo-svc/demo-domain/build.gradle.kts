@@ -1,3 +1,3 @@
 plugins {
-    id("ofbiz-msa.java-library")
+    id("ofbiz-msa.domain")
 }

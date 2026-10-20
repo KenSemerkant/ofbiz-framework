@@ -8,19 +8,13 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.server.LocalServerPort;
 
 /**
  * P1-F1-S1 AC1: OIDC discovery document is served with the issuer,
  * JWKS URI and the supported grants (auth-code+PKCE, client-credentials,
  * refresh). Password grant must never be advertised (AC4 security check).
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-class DiscoveryDocumentTest {
-
-    @LocalServerPort
-    private int port;
+class DiscoveryDocumentTest extends IdentityIntegrationTest {
 
     private final HttpClient http = HttpClient.newHttpClient();
 

@@ -18,22 +18,16 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.server.LocalServerPort;
 
 /**
  * P1-F1-S1 AC3: full authorization-code + PKCE flow against the running
  * server — login, consent-free code issuance, token exchange, and a
  * successful refresh_token grant.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-class AuthorizationCodeFlowTest {
+class AuthorizationCodeFlowTest extends IdentityIntegrationTest {
 
     private static final String REDIRECT_URI = "http://127.0.0.1:8080/login/oauth2/code/gateway";
     private static final Pattern CSRF = Pattern.compile("name=\"_csrf\"[^>]*value=\"([^\"]+)\"");
-
-    @LocalServerPort
-    private int port;
 
     private final CookieManager cookies = new CookieManager();
     private final HttpClient http = HttpClient.newBuilder()

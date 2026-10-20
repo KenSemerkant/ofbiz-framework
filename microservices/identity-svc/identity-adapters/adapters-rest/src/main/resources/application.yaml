@@ -1,32 +1,27 @@
 spring:
   application:
     name: identity-svc
+  profiles:
+    # Local/dev boot works out of the box; production must set
+    # SPRING_PROFILES_ACTIVE=prod and provide the environment variables.
+    default: dev
   threads:
     virtual:
       enabled: true
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: identity-svc
+      auto-offset-reset: earliest
   security:
-    user:
-      name: test-user
-      password: "{noop}test-password"
     oauth2:
       authorizationserver:
-        issuer: http://localhost:8080
-        client:
-          gateway-test-client:
-            registration:
-              client-id: gateway-test-client
-              client-secret: "{noop}test-secret"
-              client-authentication-methods:
-                - client_secret_basic
-              authorization-grant-types:
-                - authorization_code
-                - client_credentials
-                - refresh_token
-              redirect-uris:
-                - http://127.0.0.1:8080/login/oauth2/code/gateway
-              scopes:
-                - openid
-              require-proof-key: true
+        issuer: ${IDENTITY_ISSUER:http://localhost:8080}
 server:
   port: 8080
 management:
@@ -38,3 +33,9 @@ management:
     health:
       probes:
         enabled: true
+identity:
+  relay:
+    enabled: true
+party:
+  consumer:
+    enabled: true

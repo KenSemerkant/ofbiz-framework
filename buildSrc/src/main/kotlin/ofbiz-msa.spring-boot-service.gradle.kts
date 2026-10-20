@@ -34,12 +34,30 @@ configure<io.spring.gradle.dependencymanagement.dsl.DependencyManagementExtensio
         dependency("org.springframework:spring-webmvc:7.0.9")
         dependency("tools.jackson.core:jackson-core:3.1.7")
         dependency("tools.jackson.core:jackson-databind:3.1.7")
+        dependency("com.fasterxml.jackson.core:jackson-core:2.22.3")
+        dependency("com.fasterxml.jackson.core:jackson-databind:2.22.3")
         dependency("io.micrometer:micrometer-core:1.16.6")
+        dependency("org.postgresql:postgresql:42.7.12")
+        dependency("org.springframework.data:spring-data-commons:4.0.6")
+        dependency("org.springframework.kafka:spring-kafka:4.0.6")
+        dependency("at.yawk.lz4:lz4-java:1.11.4")
     }
 }
 
 tasks.withType<Test>().configureEach {
     useJUnitPlatform()
+}
+
+// Security overrides that the Boot 4.0.6 BOM does not carry yet (trivy gate).
+configurations.all {
+    resolutionStrategy.eachDependency {
+        if (requested.group == "io.netty") {
+            useVersion("4.2.17.Final")
+        }
+        if (requested.group == "org.springframework" && requested.version?.startsWith("7.0.") == true) {
+            useVersion("7.0.9")
+        }
+    }
 }
 
 springBoot {

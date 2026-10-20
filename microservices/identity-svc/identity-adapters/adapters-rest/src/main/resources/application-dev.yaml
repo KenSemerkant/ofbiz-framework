@@ -1,0 +1,25 @@
+# Dev-only credentials. Never use this profile in a deployed environment.
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/identity
+    username: identity
+    password: identity
+  security:
+    oauth2:
+      authorizationserver:
+        client:
+          gateway-test-client:
+            registration:
+              client-id: gateway-test-client
+              client-secret: "{noop}test-secret"
+              client-authentication-methods:
+                - client_secret_basic
+              authorization-grant-types:
+                - authorization_code
+                - client_credentials
+                - refresh_token
+              redirect-uris:
+                - http://127.0.0.1:8080/login/oauth2/code/gateway
+              scopes:
+                - openid
+              require-proof-key: true

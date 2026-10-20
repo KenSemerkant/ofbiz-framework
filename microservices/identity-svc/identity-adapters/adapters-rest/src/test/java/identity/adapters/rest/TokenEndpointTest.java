@@ -9,18 +9,12 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.Base64;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.server.LocalServerPort;
 
 /**
  * P1-F1-S1 AC2 (issuance half): the registered test client can obtain a token
  * via client_credentials; a wrong secret is rejected with 401.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-class TokenEndpointTest {
-
-    @LocalServerPort
-    private int port;
+class TokenEndpointTest extends IdentityIntegrationTest {
 
     private final HttpClient http = HttpClient.newHttpClient();
 

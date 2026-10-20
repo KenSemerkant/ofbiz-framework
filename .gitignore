@@ -42,3 +42,4 @@ node_modules/
 
 # Modernization program build (root gradle wrapper)
 .gradle/
+.codegraph/

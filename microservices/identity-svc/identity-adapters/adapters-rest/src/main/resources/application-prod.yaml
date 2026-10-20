@@ -1,0 +1,28 @@
+# Production profile: every credential comes from the environment and has no
+# fallback, so a missing variable fails startup instead of booting with a
+# known development secret.
+spring:
+  datasource:
+    url: ${IDENTITY_DB_URL}
+    username: ${IDENTITY_DB_USER}
+    password: ${IDENTITY_DB_PASSWORD}
+  security:
+    oauth2:
+      authorizationserver:
+        issuer: ${IDENTITY_ISSUER}
+        client:
+          gateway:
+            registration:
+              client-id: ${GATEWAY_CLIENT_ID}
+              client-secret: ${GATEWAY_CLIENT_SECRET}
+              client-authentication-methods:
+                - client_secret_basic
+              authorization-grant-types:
+                - authorization_code
+                - client_credentials
+                - refresh_token
+              redirect-uris:
+                - ${GATEWAY_REDIRECT_URI}
+              scopes:
+                - openid
+              require-proof-key: true

@@ -38,7 +38,7 @@ public final class OfbizArchitectureRules {
             .layer("Infrastructure").definedBy("..infrastructure..")
             .whereLayer("Adapters").mayNotBeAccessedByAnyLayer()
             .whereLayer("Infrastructure").mayNotBeAccessedByAnyLayer()
-            .whereLayer("Application").mayNotBeAccessedByAnyLayer()
+            .whereLayer("Application").mayOnlyBeAccessedByLayers("Adapters", "Infrastructure")
             .whereLayer("Application").mayOnlyAccessLayers("Domain")
             .because("dependencies must point inward: adapters|infrastructure -> application -> domain");
     }

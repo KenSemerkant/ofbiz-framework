@@ -12,7 +12,7 @@ kafka = "3.7.1"
 postgres = "42.7.4"
 otel = "1.67.0"
 flyway = "10.20.1"
-testcontainers = "1.19.8"
+testcontainers = "2.0.5"
 archunit = "1.3.0"
 junit = "5.10.2"
 
