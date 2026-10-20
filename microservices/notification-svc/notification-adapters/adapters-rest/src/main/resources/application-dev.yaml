@@ -1,0 +1,9 @@
+# Dev-only database and SMTP settings (Mailhog).
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/notification
+    username: notification
+    password: notification
+  mail:
+    host: localhost
+    port: 1025
