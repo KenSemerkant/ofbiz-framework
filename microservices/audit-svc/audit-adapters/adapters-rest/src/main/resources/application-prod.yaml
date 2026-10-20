@@ -1,0 +1,6 @@
+# Production profile: credentials are required from the environment.
+spring:
+  datasource:
+    url: ${AUDIT_DB_URL}
+    username: ${AUDIT_DB_USER}
+    password: ${AUDIT_DB_PASSWORD}

@@ -1,0 +1,6 @@
+# Dev-only database credentials.
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/audit
+    username: audit
+    password: audit
