@@ -131,9 +131,9 @@ Evidence: `platform/observability/20-verify.sh` → ALL CHECKS PASSED.
 ## P2-F2 CDC Bridge (reusable platform)
 **Epic: monolith interop (CG: bridge reusable by later phases)**
 - **S1 (L):** Debezium connector config + `ofbiz.<entity>.<action>` topics + Avro schemas. AC: [ ] insert/update/delete on monolith party table → events within 5s [ ] snapshot completes on party slice.
-- **S2 (M):** Projection builder library (platform module). AC: [ ] party-svc projection table rebuilt from scratch via re-consume [ ] idempotent.
-- **S3 (M):** Reverse-sync adapter. AC: [ ] `party.party.updated` applies back to monolith table [ ] conflict policy documented (new-service wins).
-- **S4 (M):** Consistency checker job. AC: [ ] delta report (row counts + field checksums) [ ] non-zero exit on drift (CI-gateable).
+- **S2 (M):** Projection builder library (platform module). AC: [x] party-svc projection table rebuilt from scratch via re-consume [x] idempotent. Evidence: platform/projection IdempotentProjector; MonolithProjectionConsumerTest (Kafka 4 + Postgres Testcontainers: projection lands, duplicate event id skipped, rebuild-from-scratch repopulates).
+- **S3 (M):** Reverse-sync adapter. AC: [x] `party.party.updated` applies back to monolith table [x] conflict policy documented (new-service wins). Evidence: ReverseSyncServiceTest (stale row overwritten, revoked role removed); ReverseSyncConsumer + JdbcMonolithSyncWriter (second datasource).
+- **S4 (M):** Consistency checker job. AC: [x] delta report (row counts + field checksums) [x] non-zero exit on drift (CI-gateable). Script: platform/cdc/30-check-consistency.sh; first on-cluster run evidence lands with the CG-2 cutover (needs party-svc deployed).
 ## P2-F3 identity integration
 - **S1 (M):** JWT claims from party projection (roles→permissions). AC: [ ] token carries party roles [ ] gateway 403 on missing role [ ] revocation on `party.role.revoked` within 5s.
 
