@@ -21,6 +21,22 @@ import party.adapters.rest.persistence.JdbcMonolithSyncWriter;
 @ConditionalOnProperty(name = "party.monolith.sync.enabled", havingValue = "true")
 public class MonolithSyncConfig {
 
+    /**
+     * The party-svc own database (PARTY_DB_* env → spring.datasource.*).
+     * Declaring any DataSource bean makes Boot's auto-configuration back
+     * off, so the primary one must be explicit or Flyway/JPA would pick
+     * the monolith datasource instead.
+     */
+    @Bean
+    @org.springframework.context.annotation.Primary
+    DataSource partyDataSource(
+            @Value("${spring.datasource.url}") String url,
+            @Value("${spring.datasource.username}") String username,
+            @Value("${spring.datasource.password}") String password) {
+        return DataSourceBuilder.create()
+            .url(url).username(username).password(password).build();
+    }
+
     @Bean(name = "monolithDataSource")
     DataSource monolithDataSource(
             @Value("${party.monolith.datasource.url}") String url,

@@ -35,7 +35,10 @@ public class JpaMonolithProjectionSink implements MonolithProjectionSink {
     @Override
     public void apply(String eventId, String envelopeJson) {
         transactions.executeWithoutResult(tx -> {
-            JsonNode event = json.readTree(envelopeJson);
+            JsonNode root = json.readTree(envelopeJson);
+            // JsonConverter with schemas.enable wraps the change event in a
+            // "payload" member; schema-less producers send it at the root.
+            JsonNode event = root.has("payload") ? root.path("payload") : root;
             String table = event.path("source").path("table").asText("");
             String op = event.path("op").asText("c");
             JsonNode row = op.equals("d") ? event.path("before") : event.path("after");
@@ -82,10 +85,11 @@ public class JpaMonolithProjectionSink implements MonolithProjectionSink {
     private void applyRole(String op, JsonNode row) {
         String partyId = row.path("PARTY_ID").asText();
         String role = row.path("ROLE_TYPE_ID").asText();
-        MonolithPartyEntity entity = parties.findById(partyId).orElse(null);
-        if (entity == null) {
-            return; // role for an unprojected party — party row will follow
-        }
+        // Topics are consumed independently, so a role event can arrive
+        // before its PARTY event — create a stub row so the role is not
+        // lost; the PARTY/PERSON events fill in the fields later.
+        MonolithPartyEntity entity = parties.findById(partyId)
+            .orElseGet(() -> new MonolithPartyEntity(partyId));
         if (op.equals("d")) {
             entity.getRoles().remove(role);
         } else {

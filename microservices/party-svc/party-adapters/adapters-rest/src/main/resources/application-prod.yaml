@@ -6,3 +6,23 @@ spring:
     url: ${PARTY_DB_URL}
     username: ${PARTY_DB_USER}
     password: ${PARTY_DB_PASSWORD}
+  # Kafka mTLS material (mounted from the KafkaUser PEM secret by
+  # platform/services/10-deploy.sh; activated with SPRING_KAFKA_SSL_BUNDLE=kafka).
+  # Prod profile only — the kafka producer factory loads the bundle eagerly.
+  ssl:
+    bundle:
+      pem:
+        kafka:
+          truststore:
+            certificate: ${KAFKA_TLS_CA:/etc/kafka-tls/ca.crt}
+          keystore:
+            certificate: ${KAFKA_TLS_CERT:/etc/kafka-tls/user.crt}
+            privateKey: ${KAFKA_TLS_KEY:/etc/kafka-tls/user.key}
+party:
+  monolith:
+    sync:
+      enabled: ${PARTY_MONOLITH_SYNC_ENABLED:false}
+    datasource:
+      url: ${PARTY_MONOLITH_DATASOURCE_URL:jdbc:postgresql://monolith-db.ofbiz.svc:5432/ofbiz}
+      username: ${PARTY_MONOLITH_DATASOURCE_USERNAME:ofbiz}
+      password: ${PARTY_MONOLITH_DATASOURCE_PASSWORD:ofbiz}
