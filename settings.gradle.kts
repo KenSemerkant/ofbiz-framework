@@ -17,6 +17,7 @@ rootProject.name = "ofbiz-modernization"
 
 include(
     ":platform:arch-rules",
+    ":platform:projection",
     ":platform:demo-svc:demo-domain",
     ":platform:demo-svc:demo-application",
     ":platform:demo-svc:demo-adapters:adapters-rest",
