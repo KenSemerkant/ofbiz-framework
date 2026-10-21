@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import party.application.PartyService;
 import party.domain.ContactMech;
@@ -69,6 +70,23 @@ public class PartyController {
         }
         partyService.upsert(party);
         return ResponseEntity.status(HttpStatus.CREATED).body(toResponse(party));
+    }
+
+    /** P2-F1-S3: paged role lookup. */
+    @GetMapping
+    public ResponseEntity<?> findByRole(@RequestParam String role,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        if (size < 1 || size > 100) {
+            return ResponseEntity.badRequest().body("size must be between 1 and 100");
+        }
+        party.application.PartyPage result = partyService.findByRole(role, page, size);
+        return ResponseEntity.ok(java.util.Map.of(
+            "items", result.items(),
+            "page", result.page(),
+            "size", result.size(),
+            "totalElements", result.totalElements(),
+            "totalPages", result.totalPages()));
     }
 
     @GetMapping("/{partyId}")

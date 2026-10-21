@@ -32,6 +32,11 @@ public class PartyService {
         return store.find(partyId);
     }
 
+    /** P2-F1-S3: paged role lookup. */
+    public PartyPage findByRole(String roleTypeId, int page, int size) {
+        return store.findByRole(roleTypeId, page, size);
+    }
+
     public void upsert(Party party) {
         Optional<Party> existing = store.find(party.partyId());
         store.save(party);

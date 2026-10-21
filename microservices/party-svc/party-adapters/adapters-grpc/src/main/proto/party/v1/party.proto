@@ -5,11 +5,11 @@ package party.v1;
 option java_package = "party.v1";
 option java_outer_classname = "PartyOuterClass";
 
-// East-west contract (ADR-010, FUTURESTATE §5.1): getParty, upsertParty.
-// findPartiesByRole arrives in P2-F1-S3.
+// East-west contract (ADR-010, FUTURESTATE §5.1).
 service PartyApi {
   rpc GetParty(GetPartyRequest) returns (PartyResponse);
   rpc UpsertParty(UpsertPartyRequest) returns (PartyResponse);
+  rpc FindPartiesByRole(FindPartiesByRoleRequest) returns (FindPartiesByRoleResponse);
 }
 
 message GetPartyRequest {
@@ -30,4 +30,24 @@ message PartyResponse {
   string kind = 2;
   string display_name = 3;
   repeated string roles = 4;
+}
+
+message FindPartiesByRoleRequest {
+  string role = 1;
+  int32 page = 2;
+  int32 size = 3;
+}
+
+message FindPartiesByRoleResponse {
+  repeated PartySummary items = 1;
+  int32 page = 2;
+  int32 size = 3;
+  int64 total_elements = 4;
+  int32 total_pages = 5;
+}
+
+message PartySummary {
+  string party_id = 1;
+  string kind = 2;
+  string display_name = 3;
 }

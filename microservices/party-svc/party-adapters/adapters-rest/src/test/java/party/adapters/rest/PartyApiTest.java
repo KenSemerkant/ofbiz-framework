@@ -39,6 +39,9 @@ class PartyApiTest {
     @Autowired
     OutboxRepository outbox;
 
+    @Autowired
+    party.adapters.rest.persistence.PartyRepository partyRepository;
+
     private final HttpClient client = HttpClient.newHttpClient();
 
     private HttpResponse<String> post(String body) throws Exception {
@@ -88,8 +91,7 @@ class PartyApiTest {
 
     /** P2-F1-S2 contract: link/unlink contact mechs with purpose validation. */
     @Test
-    void contactMechLinkRoundtripAndPurposeValidation() throws Exception {
-        HttpResponse<String> linked = post("""
+    void contactMechLinkRoundtripAndPurposeValidation() throws Exception {        HttpResponse<String> linked = post("""
             {"partyId":"P2","kind":"PERSON","firstName":"Grace","lastName":"Hopper",
              "contactMechs":[{"contactMechId":"C1","type":"EMAIL_ADDRESS",
                               "value":"grace@navy.mil","purposes":["PRIMARY_EMAIL"]}]}""");
@@ -104,5 +106,28 @@ class PartyApiTest {
              "contactMechs":[{"contactMechId":"C1","type":"EMAIL_ADDRESS",
                               "value":"x@y.z","purposes":["SHIPPING_ADDRESS"]}]}""").statusCode());
         assertEquals(404, get("P3").statusCode());
+    }
+
+    /** P2-F1-S3 AC: envelope shape + p99 < 200ms at 10k rows. */
+    @Test
+    void findByRolePaginatesAndStaysUnder200msAt10kRows() throws Exception {
+        java.util.List<party.adapters.rest.persistence.PartyEntity> batch = new java.util.ArrayList<>();
+        for (int i = 0; i < 10_000; i++) {
+            batch.add(new party.adapters.rest.persistence.PartyEntity(
+                "CUST-%05d".formatted(i), "PERSON", "First%d".formatted(i), "Last%d".formatted(i),
+                null, java.util.Set.of("CUSTOMER"), "[]"));
+        }
+        partyRepository.saveAll(batch);
+
+        long start = System.nanoTime();
+        HttpResponse<String> page1 = client.send(HttpRequest.newBuilder()
+            .uri(URI.create("http://localhost:" + port + "/api/v1/parties?role=CUSTOMER&page=0&size=20"))
+            .GET().build(), HttpResponse.BodyHandlers.ofString());
+        long elapsedMs = (System.nanoTime() - start) / 1_000_000;
+
+        assertEquals(200, page1.statusCode());
+        assertTrue(page1.body().contains("\"totalElements\":10000"));
+        assertTrue(page1.body().contains("\"totalPages\":500"));
+        assertTrue(elapsedMs < 200, "p99 budget exceeded: query took " + elapsedMs + "ms");
     }
 }

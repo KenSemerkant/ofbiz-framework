@@ -33,6 +33,24 @@ public class JpaPartyStore implements PartyStore {
             party.roles(), ContactMechJson.serialize(party.contactMechs())));
     }
 
+    @Override
+    public party.application.PartyPage findByRole(String roleTypeId, int page, int size) {
+        var result = parties.findByRole(roleTypeId,
+            org.springframework.data.domain.PageRequest.of(page, size,
+                org.springframework.data.domain.Sort.by("partyId")));
+        var items = result.stream()
+            .map(e -> new party.application.PartyPage.PartySummary(e.getPartyId(), e.getKind(),
+                displayName(e)))
+            .toList();
+        return new party.application.PartyPage(items, page, size, result.getTotalElements());
+    }
+
+    private String displayName(PartyEntity entity) {
+        return "PERSON".equals(entity.getKind())
+            ? entity.getFirstName() + " " + entity.getLastName()
+            : entity.getGroupName();
+    }
+
     private Party toDomain(PartyEntity entity) {
         PartyKind kind = PartyKind.valueOf(entity.getKind());
         Person person = kind == PartyKind.PERSON

@@ -29,6 +29,11 @@ class PartyServiceTest {
             public void save(Party party) {
                 storeData.put(party.partyId(), party);
             }
+
+            @Override
+            public PartyPage findByRole(String roleTypeId, int page, int size) {
+                return new PartyPage(List.of(), page, size, 0);
+            }
         },
         (eventType, aggregateKey, payload) -> outboxEvents.add(eventType),
         party -> "{\"partyId\":\"" + party.partyId() + "\"}");

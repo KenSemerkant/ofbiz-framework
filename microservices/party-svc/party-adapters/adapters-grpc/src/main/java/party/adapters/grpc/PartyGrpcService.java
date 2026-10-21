@@ -49,6 +49,28 @@ public class PartyGrpcService extends PartyApiImplBase {
         }
     }
 
+    @Override
+    public void findPartiesByRole(party.v1.PartyOuterClass.FindPartiesByRoleRequest request,
+            StreamObserver<party.v1.PartyOuterClass.FindPartiesByRoleResponse> responseObserver) {
+        party.application.PartyPage page = partyService.findByRole(
+            request.getRole(), request.getPage(), request.getSize());
+        var response = party.v1.PartyOuterClass.FindPartiesByRoleResponse.newBuilder()
+            .setPage(page.page())
+            .setSize(page.size())
+            .setTotalElements(page.totalElements())
+            .setTotalPages(page.totalPages())
+            .addAllItems(page.items().stream()
+                .map(item -> party.v1.PartyOuterClass.PartySummary.newBuilder()
+                    .setPartyId(item.partyId())
+                    .setKind(item.kind())
+                    .setDisplayName(item.displayName())
+                    .build())
+                .toList())
+            .build();
+        responseObserver.onNext(response);
+        responseObserver.onCompleted();
+    }
+
     private Party toDomain(UpsertPartyRequest request) {
         PartyKind kind = PartyKind.valueOf(request.getKind());
         if (kind == PartyKind.PERSON) {

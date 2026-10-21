@@ -47,6 +47,12 @@ class PartyGrpcServiceTest {
                 public void save(Party party) {
                     storeData.put(party.partyId(), party);
                 }
+
+                @Override
+                public party.application.PartyPage findByRole(String roleTypeId, int page,
+                        int size) {
+                    return new party.application.PartyPage(java.util.List.of(), page, size, 0);
+                }
             },
             (eventType, aggregateKey, payload) -> outboxEvents.add(eventType),
             party -> "{}");
