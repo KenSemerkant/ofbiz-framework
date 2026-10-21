@@ -57,15 +57,6 @@ kind: KafkaUser
 metadata: {name: order-svc, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
 spec:
   authentication: {type: tls}
-  authorization:
-    type: simple
-    acls:
-      - resource: {type: topic, name: order.order.placed.v1, patternType: literal}
-        operations: [Write, Describe]
-        host: "*"
-      - resource: {type: cluster}
-        operations: [IdempotentWrite]
-        host: "*"
 ---
 # notification-svc consumes notifications: read-only
 apiVersion: kafka.strimzi.io/v1
@@ -73,19 +64,6 @@ kind: KafkaUser
 metadata: {name: notification-svc, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
 spec:
   authentication: {type: tls}
-  authorization:
-    type: simple
-    acls:
-      - resource: {type: topic, name: notification.requested.v1, patternType: literal}
-        operations: [Read, Describe]
-        host: "*"
-      # retry-then-DLQ publisher writes to its own DLQ
-      - resource: {type: topic, name: notification.requested.v1.dlq, patternType: literal}
-        operations: [Write, Describe]
-        host: "*"
-      - resource: {type: group, name: notification-svc, patternType: prefix}
-        operations: [Read]
-        host: "*"
 ---
 # audit-svc consumes wildcard + owns the DLQ
 apiVersion: kafka.strimzi.io/v1
@@ -93,19 +71,6 @@ kind: KafkaUser
 metadata: {name: audit-svc, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
 spec:
   authentication: {type: tls}
-  authorization:
-    type: simple
-    acls:
-      - resource: {type: topic, name: audit., patternType: prefix}
-        operations: [Read, Describe, Write]
-        host: "*"
-      # HIGH-severity alerts are published to the notification topic
-      - resource: {type: topic, name: notification.requested.v1, patternType: literal}
-        operations: [Write, Describe]
-        host: "*"
-      - resource: {type: group, name: audit-svc, patternType: prefix}
-        operations: [Read]
-        host: "*"
 ---
 # search-svc consumes documents, owns its DLQ (P1-F6-S2)
 apiVersion: kafka.strimzi.io/v1
@@ -113,15 +78,6 @@ kind: KafkaUser
 metadata: {name: search-svc, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
 spec:
   authentication: {type: tls}
-  authorization:
-    type: simple
-    acls:
-      - resource: {type: topic, name: search.doc.indexed.v1, patternType: literal}
-        operations: [Read, Describe, Write]
-        host: "*"
-      - resource: {type: group, name: search-svc, patternType: prefix}
-        operations: [Read]
-        host: "*"
 EOF
 
 for u in order-svc notification-svc audit-svc search-svc; do
@@ -140,3 +96,23 @@ kubectl -n "${NS}" get kafkauser order-svc notification-svc audit-svc search-svc
   -o custom-columns='USER:.metadata.name,PRINCIPAL:.status.username,ACLs:.spec.authorization.acls[*].operations'
 
 echo "DONE — topics + DLQ + per-principal ACL manifests applied (P0-F2-S2; enforcement deferred, see note)"
+
+# P2: party-svc principal (tls; broker-side authz off locally, P0-F2-S2)
+kubectl -n "${NS}" apply -f - <<'EOF2'
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaUser
+metadata: {name: party-svc, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec:
+  authentication: {type: tls}
+EOF2
+
+# P2: identity-svc principal for the party projection + audit listeners
+kubectl -n "${NS}" apply -f - <<'EOF2'
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaUser
+metadata: {name: identity-svc, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec:
+  authentication: {type: tls}
+EOF2

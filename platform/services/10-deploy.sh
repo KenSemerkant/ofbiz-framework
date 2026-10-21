@@ -23,6 +23,13 @@ kubectl -n "${NS}" apply -f "${SCRIPT_DIR}/manifests/"
 kubectl -n "${NS}" rollout status statefulset/postgres --timeout=300s
 kubectl -n "${NS}" rollout status deploy/redis --timeout=180s
 kubectl -n "${NS}" rollout status deploy/mailhog --timeout=180s
+# P2: party database (init.sql runs only on first volume init — make it idempotent)
+kubectl -n "${NS}" exec postgres-0 -- psql -U admin -d postgres -tc \
+  "SELECT 1 FROM pg_roles WHERE rolname='party'" | grep -q 1 \
+  || kubectl -n "${NS}" exec postgres-0 -- psql -U admin -d postgres -c "CREATE ROLE party LOGIN PASSWORD 'party'"
+kubectl -n "${NS}" exec postgres-0 -- psql -U admin -d postgres -tc \
+  "SELECT 1 FROM pg_database WHERE datname='party'" | grep -q 1 \
+  || kubectl -n "${NS}" exec postgres-0 -- psql -U admin -d postgres -c "CREATE DATABASE party OWNER party"
 
 echo "==> [2/4] Topics + KafkaUsers"
 sh "${ROOT}/platform/helm/topics/10-create.sh"
@@ -40,6 +47,7 @@ build_image gateway ":microservices:gateway:bootJar" microservices/gateway
 build_image audit-svc ":microservices:audit-svc:audit-adapters:adapters-rest:bootJar" microservices/audit-svc
 build_image notification-svc ":microservices:notification-svc:notification-adapters:adapters-rest:bootJar" microservices/notification-svc
 build_image search-svc ":microservices:search-svc:search-adapters:adapters-rest:bootJar" microservices/search-svc
+build_image party-svc ":microservices:party-svc:party-adapters:adapters-rest:bootJar" microservices/party-svc
 
 # Reshape a Strimzi KafkaUser secret into the file layout Boot 4 pem ssl
 # bundles expect: ca.crt (truststore) + user.crt/user.key (keystore).
@@ -57,7 +65,7 @@ kafka_pem_secret() { # kafkauser name
     --dry-run=client -o yaml | kubectl -n "${NS}" apply -f -
   rm -f /tmp/kafka-ca.crt /tmp/kafka-user.key /tmp/kafka-user.crt
 }
-for user in audit-svc notification-svc search-svc; do kafka_pem_secret "${user}"; done
+for user in identity-svc audit-svc notification-svc search-svc party-svc; do kafka_pem_secret "${user}"; done
 
 # helm args to mount the PEM bundle and speak SSL to Kafka. The pem bundle
 # itself is declared in each service's application.yaml (env vars cannot
@@ -75,9 +83,12 @@ tls_args() { # kafkauser — single line; caller expands unquoted
 echo "==> [4/4] Helm releases (prod profiles, env-injected config)"
 CHART="${ROOT}/platform/helm/service-chart"
 
+TLS_ARGS_IDENTITY="$(tls_args identity-svc)"
+# shellcheck disable=SC2086
 helm -n "${NS}" upgrade --install identity-svc "${CHART}" \
   --set image.repository=identity-svc --set image.tag="${TAG}" \
   --set replicaCount=1 --set autoscaling.enabled=false --set podDisruptionBudget.enabled=false \
+  ${TLS_ARGS_IDENTITY} \
   --set-string 'env[0].name=SPRING_PROFILES_ACTIVE' --set-string 'env[0].value=prod' \
   --set-string 'env[1].name=IDENTITY_DB_URL' --set-string "env[1].value=jdbc:postgresql://${POSTGRES}/identity" \
   --set-string 'env[2].name=IDENTITY_DB_USER' --set-string 'env[2].value=identity' \
@@ -140,8 +151,27 @@ helm -n "${NS}" upgrade --install search-svc "${CHART}" \
   --set-string "env[1].name=KAFKA_BOOTSTRAP_SERVERS" --set-string "env[1].value=${KAFKA}" \
   --set-string 'env[2].name=SEARCH_GRPC_PORT' --set-string 'env[2].value=9090'
 
-for deploy in identity-svc gateway audit-svc notification-svc search-svc; do
+TLS_ARGS_PARTY="$(tls_args party-svc)"
+# shellcheck disable=SC2086
+helm -n "${NS}" upgrade --install party-svc "${CHART}" \
+  --set image.repository=party-svc --set image.tag="${TAG}" \
+  --set replicaCount=1 --set autoscaling.enabled=false --set podDisruptionBudget.enabled=false \
+  --set grpcPort=9090 \
+  ${TLS_ARGS_PARTY} \
+  --set-string 'env[0].name=SPRING_PROFILES_ACTIVE' --set-string 'env[0].value=prod' \
+  --set-string 'env[1].name=PARTY_DB_URL' --set-string "env[1].value=jdbc:postgresql://${POSTGRES}/party" \
+  --set-string 'env[2].name=PARTY_DB_USER' --set-string 'env[2].value=party' \
+  --set-string 'env[3].name=PARTY_DB_PASSWORD' --set-string 'env[3].value=party' \
+  --set-string "env[4].name=KAFKA_BOOTSTRAP_SERVERS" --set-string "env[4].value=${KAFKA}" \
+  --set-string 'env[5].name=PARTY_GRPC_PORT' --set-string 'env[5].value=9090' \
+  --set-string 'env[6].name=PARTY_MONOLITH_SYNC_ENABLED' --set-string 'env[6].value=true' \
+  --set-string 'env[7].name=PARTY_MONOLITH_DATASOURCE_URL' --set-string "env[7].value=jdbc:postgresql://monolith-db.${NS}.svc:5432/ofbiz" \
+  --set-string 'env[8].name=PARTY_MONOLITH_DATASOURCE_USERNAME' --set-string 'env[8].value=ofbiz' \
+  --set-string 'env[9].name=PARTY_MONOLITH_DATASOURCE_PASSWORD' --set-string 'env[9].value=ofbiz' \
+  --set-string 'env[10].name=JAVA_TOOL_OPTIONS' --set-string 'env[10].value=-XX:MaxRAMPercentage=75.0'
+
+for deploy in identity-svc gateway audit-svc notification-svc search-svc party-svc; do
   kubectl -n "${NS}" rollout status "deploy/${deploy}" --timeout=300s
 done
 
-echo "DONE — five platform services deployed (P1-F6-S2)"
+echo "DONE — six services deployed (P1-F6-S2 + P2 party-svc)"
