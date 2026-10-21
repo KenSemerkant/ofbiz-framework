@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.sun.net.httpserver.HttpServer;
+import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
+import io.opentelemetry.sdk.trace.data.SpanData;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -44,6 +46,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 class GatewayRoutingTest {
 
     private static final byte[] SECRET = "test-gateway-hmac-secret-32bytes!!".getBytes(StandardCharsets.UTF_8);
+
+    static final InMemorySpanExporter SPAN_EXPORTER = InMemorySpanExporter.create();
 
     @Container
     static final GenericContainer<?> REDIS =
@@ -92,6 +96,7 @@ class GatewayRoutingTest {
         registry.add("spring.data.redis.host", REDIS::getHost);
         registry.add("spring.data.redis.port", () -> REDIS.getMappedPort(6379));
         registry.add("gateway.monolith.host-header", () -> "ofbiz-monolith.ofbiz.svc");
+        registry.add("management.tracing.sampling.probability", () -> "1.0");
     }
 
     @TestConfiguration
@@ -101,6 +106,11 @@ class GatewayRoutingTest {
             return NimbusReactiveJwtDecoder.withSecretKey(new SecretKeySpec(SECRET, "HmacSHA256"))
                 .macAlgorithm(MacAlgorithm.HS256)
                 .build();
+        }
+
+        @Bean
+        io.opentelemetry.sdk.trace.export.SpanExporter spanExporter() {
+            return SPAN_EXPORTER;
         }
     }
 
@@ -157,7 +167,37 @@ class GatewayRoutingTest {
         Map<String, List<String>> seen = MONOLITH_REQUESTS.get(MONOLITH_REQUESTS.size() - 1);
         assertEquals("carol", first(seen, "X-Auth-User"));
         assertEquals("ofbiz-monolith.ofbiz.svc", first(seen, "Host"));
-        assertEquals(traceParent, first(seen, "traceparent"));
+        // tracing active: the gateway joins the request trace and rewrites
+        // traceparent so monolith spans chain under the gateway span — the
+        // trace id must survive, the span id is the gateway's own.
+        String forwarded = first(seen, "traceparent");
+        assertNotNull(forwarded, "traceparent must reach the monolith");
+        assertEquals(traceParent.substring(3, 35), forwarded.substring(3, 35),
+            "trace id must be preserved: " + forwarded);
+    }
+
+    @Test
+    void monolithBridgeExportsSpansForProxiedRequest() throws Exception {
+        String traceId = "5b8efff798038103d269b633813fc60c";
+        String traceParent = "00-" + traceId + "-00f067aa0ba902b7-01";
+        HttpResponse<String> response = get("/webtools/control/main",
+            token("span-export", Instant.now().plusSeconds(60)), Map.of("traceparent", traceParent));
+
+        assertEquals(200, response.statusCode(), response.body());
+        assertTrue(awaitExportedTrace(traceId), "no exported spans carry the request trace id; exported: "
+            + SPAN_EXPORTER.getFinishedSpanItems().stream()
+                .map(s -> s.getName() + "/" + s.getTraceId()).distinct().toList());
+    }
+
+    private static boolean awaitExportedTrace(String traceId) throws InterruptedException {
+        for (int i = 0; i < 50; i++) {
+            if (SPAN_EXPORTER.getFinishedSpanItems().stream()
+                .map(SpanData::getTraceId).anyMatch(traceId::equals)) {
+                return true;
+            }
+            Thread.sleep(100);
+        }
+        return false;
     }
 
     @Test

@@ -13,3 +13,9 @@ spring:
       password: ${REDIS_PASSWORD}
       ssl:
         enabled: ${REDIS_SSL:true}
+management:
+  otlp:
+    tracing:
+      # Jaeger collector accepts OTLP gRPC on 4317 (platform/observability-stack.yaml)
+      transport: grpc
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://jaeger-collector.observability.svc:4317}
