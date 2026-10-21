@@ -74,7 +74,7 @@ Evidence: `platform/observability/20-verify.sh` → ALL CHECKS PASSED.
 **Objective:** the five cross-cutting services stand up skeleton-to-working on Phase-0 infra. No domain migration yet.
 
 **CG-1:**
-- [ ] OIDC login flow issues a JWT usable against a gateway demo route
+- [x] OIDC login flow issues a JWT usable against a gateway demo route — two halves: identity issues a real RS256 Bearer token (`TokenEndpointTest` client_credentials; `AuthorizationCodeFlowTest` auth-code+PKCE), gateway accepts it via live JWKS fetch (`GatewayLiveJwksTest`: production decoder wiring — Boot auto-config from `jwk-set-uri`, no test decoder bean; issuer-signed token → 200 on `/api/v1/demo/**`, unknown-key → 401, expired → 401). No single-process e2e yet; lands with the CG-1 all-services gate.
 - [x] gateway routes to demo-svc with JWT validation + rate limit proven (429 on burst) — `GatewayRoutingTest`
 - [x] audit-svc consumes a demo topic wildcard and stores events queryably — `AuditIngestTest`
 - [x] notification-svc sends a test email on `notification.requested.v1` — `NotificationDeliveryTest`
@@ -83,7 +83,7 @@ Evidence: `platform/observability/20-verify.sh` → ALL CHECKS PASSED.
 
 ## P1-F1 identity-svc
 **Epic: OIDC issuer (CG: external token accepted by demo route)**
-- **S1 (L):** Spring Authorization Server: auth-code+PKCE, client-credentials, JWKS endpoint. AC: [x] OIDC discovery doc served (`DiscoveryDocumentTest`) [ ] token for test client validates at gateway (gateway slice pending) [x] refresh flow works (`AuthorizationCodeFlowTest`: auth-code+PKCE login → code exchange → refresh grant) [x] password grant absent (asserted in discovery test; Boot 4 property-driven authorization server — no grant configured, none advertised). Evidence: `./gradlew build` green; identity adapter suite 9/9 (Postgres Testcontainers; Kafka disabled for these three tests).
+- **S1 (L):** Spring Authorization Server: auth-code+PKCE, client-credentials, JWKS endpoint. AC: [x] OIDC discovery doc served (`DiscoveryDocumentTest`) [x] token for test client validates at gateway (`GatewayLiveJwksTest` — RS256 via live JWKS endpoint with the production decoder wiring; unknown signing key 401) [x] refresh flow works (`AuthorizationCodeFlowTest`: auth-code+PKCE login → code exchange → refresh grant) [x] password grant absent (asserted in discovery test; Boot 4 property-driven authorization server — no grant configured, none advertised). Evidence: `./gradlew build` green; identity adapter suite 9/9 (Postgres Testcontainers; Kafka disabled for these three tests).
 - **S2 (M):** Credential store + Flyway schema + user CRUD admin API. AC: [x] create/verify user roundtrip [x] Shiro-compatible hashing (PBKDF2 + legacy `$SHA$`, `OfbizPasswordHasherTest`) [x] audit event emitted on login. Evidence: `UserCrudLoginAuditTest` (201 admin / 403 plain user / 401 anonymous, outbox row `identity.login.succeeded`), `./gradlew build` green.
 - **S3 (M):** Party-link projection consumer (stub for Phase 2). AC: [x] consumes `party.party.*` into local projection table [x] idempotent replay proven (restart, zero duplicates). Evidence: `PartyProjectionConsumerTest` (Kafka 4 + Postgres Testcontainers: row count 1 after consumer restart and replay).
 
