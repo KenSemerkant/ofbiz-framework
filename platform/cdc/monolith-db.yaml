@@ -1,0 +1,85 @@
+# P2-F2-S1: monolith Postgres stand-in with the OFBiz party slice (ADR-012).
+# Production points Debezium at the real monolith DB; locally this carries the
+# same tables/DML surface so the bridge is exercised end-to-end.
+# wal_level=logical is required for Debezium (pgoutput).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: monolith-db-init
+  namespace: ofbiz
+data:
+  init.sql: |
+    CREATE TABLE "PARTY" (
+      "PARTY_ID" VARCHAR(20) PRIMARY KEY,
+      "PARTY_TYPE_ID" VARCHAR(20),
+      "EXTERNAL_ID" VARCHAR(20),
+      "DESCRIPTION" VARCHAR(255),
+      "STATUS_ID" VARCHAR(20),
+      "CREATED_DATE" TIMESTAMP,
+      "LAST_UPDATED_STAMP" TIMESTAMP
+    );
+    CREATE TABLE "PERSON" (
+      "PARTY_ID" VARCHAR(20) PRIMARY KEY REFERENCES "PARTY"("PARTY_ID"),
+      "FIRST_NAME" VARCHAR(60),
+      "MIDDLE_NAME" VARCHAR(60),
+      "LAST_NAME" VARCHAR(60)
+    );
+    CREATE TABLE "PARTY_GROUP" (
+      "PARTY_ID" VARCHAR(20) PRIMARY KEY REFERENCES "PARTY"("PARTY_ID"),
+      "GROUP_NAME" VARCHAR(100)
+    );
+    CREATE TABLE "PARTY_ROLE" (
+      "PARTY_ID" VARCHAR(20) NOT NULL REFERENCES "PARTY"("PARTY_ID"),
+      "ROLE_TYPE_ID" VARCHAR(20) NOT NULL,
+      PRIMARY KEY ("PARTY_ID", "ROLE_TYPE_ID")
+    );
+    -- seed: snapshot must carry pre-existing rows (10k cutover dataset later)
+    INSERT INTO "PARTY" ("PARTY_ID","PARTY_TYPE_ID","STATUS_ID","CREATED_DATE")
+      SELECT 'P' || g, 'PERSON', 'PARTY_ENABLED', now() FROM generate_series(1, 50) g;
+    INSERT INTO "PERSON" ("PARTY_ID","FIRST_NAME","LAST_NAME")
+      SELECT 'P' || g, 'First' || g, 'Last' || g FROM generate_series(1, 50) g;
+    INSERT INTO "PARTY_ROLE" ("PARTY_ID","ROLE_TYPE_ID")
+      SELECT 'P' || g, 'CUSTOMER' FROM generate_series(1, 50) g;
+    ALTER TABLE "PARTY" REPLICA IDENTITY FULL;
+    ALTER TABLE "PERSON" REPLICA IDENTITY FULL;
+    ALTER TABLE "PARTY_GROUP" REPLICA IDENTITY FULL;
+    ALTER TABLE "PARTY_ROLE" REPLICA IDENTITY FULL;
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: monolith-db
+  namespace: ofbiz
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: monolith-db}
+  template:
+    metadata:
+      labels: {app: monolith-db}
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16
+          args: ["-c", "wal_level=logical", "-c", "max_replication_slots=10"]
+          env:
+            - {name: POSTGRES_DB, value: ofbiz}
+            - {name: POSTGRES_USER, value: ofbiz}
+            - {name: POSTGRES_PASSWORD, value: ofbiz}
+          ports: [{containerPort: 5432}]
+          volumeMounts:
+            - {name: init, mountPath: /docker-entrypoint-initdb.d}
+          readinessProbe:
+            exec: {command: [pg_isready, -U, ofbiz, -d, ofbiz]}
+      volumes:
+        - name: init
+          configMap: {name: monolith-db-init}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: monolith-db
+  namespace: ofbiz
+spec:
+  selector: {app: monolith-db}
+  ports: [{port: 5432, targetPort: 5432}]

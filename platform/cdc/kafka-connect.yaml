@@ -1,0 +1,48 @@
+# P2-F2-S1: Debezium Postgres Connect (plain Deployment, local profile).
+# The Strimzi KafkaConnect CR expects a Strimzi-based image layout that
+# quay.io/debezium/connect does not carry, so this runs the stock Debezium
+# image against the plaintext internal broker listener (9092). Cloud profile
+# swaps to the TLS listener + the cdc-connect KafkaUser credentials.
+# KNOWN ISSUE (P2-F2-S1): the Apicurio AvroConverter loads but its serde
+# runs in lookup mode regardless of auto-register (worker-level env vars
+# cannot express the dashed `auto-register` key; connector-level overrides
+# do not reach the worker source-task converters). CDC topics therefore
+# carry JSON with embedded schemas (JsonConverter, schemas.enable=true);
+# Avro conversion is deferred — tracked in issues/P2-F2-S1.md.
+# Service-owned topics stay Avro per ADR-009.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: debezium-connect
+  namespace: ofbiz
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: debezium-connect}
+  template:
+    metadata:
+      labels: {app: debezium-connect}
+    spec:
+      containers:
+        - name: connect
+          image: quay.io/debezium/connect:3.0.2.Final
+          env:
+            - {name: BOOTSTRAP_SERVERS, value: "ofbiz-kafka-bootstrap:9092"}
+            - {name: GROUP_ID, value: cdc-connect}
+            - {name: CONFIG_STORAGE_TOPIC, value: cdc-connect-configs}
+            - {name: OFFSET_STORAGE_TOPIC, value: cdc-connect-offsets}
+            - {name: STATUS_STORAGE_TOPIC, value: cdc-connect-status}
+          ports: [{containerPort: 8083}]
+          readinessProbe:
+            httpGet: {path: /connectors, port: 8083}
+            initialDelaySeconds: 20
+            periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: debezium-connect
+  namespace: ofbiz
+spec:
+  selector: {app: debezium-connect}
+  ports: [{port: 8083, targetPort: 8083}]
