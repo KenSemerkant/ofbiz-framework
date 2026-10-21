@@ -1,5 +1,6 @@
 package party.adapters.rest.api;
 
+import java.util.List;
 import java.util.Set;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -10,6 +11,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import party.application.PartyService;
+import party.domain.ContactMech;
+import party.domain.ContactMechPurpose;
+import party.domain.ContactMechType;
 import party.domain.Party;
 import party.domain.PartyGroup;
 import party.domain.PartyKind;
@@ -26,22 +30,42 @@ public class PartyController {
         this.partyService = partyService;
     }
 
+    public record ContactMechDto(String contactMechId, String type, String value,
+            Set<String> purposes) {
+    }
+
     public record UpsertPartyRequest(String partyId, String kind, String firstName,
-            String lastName, String groupName, Set<String> roles) {
+            String lastName, String groupName, Set<String> roles,
+            List<ContactMechDto> contactMechs) {
     }
 
     public record PartyResponse(String partyId, String kind, String displayName,
-            Set<String> roles) {
+            Set<String> roles, List<ContactMechDto> contactMechs) {
     }
 
     @PostMapping
     public ResponseEntity<PartyResponse> upsert(@RequestBody UpsertPartyRequest request) {
-        PartyKind kind = PartyKind.valueOf(request.kind());
-        Party party = kind == PartyKind.PERSON
-            ? Party.person(request.partyId(), new Person(request.firstName(), request.lastName()))
-            : Party.group(request.partyId(), new PartyGroup(request.groupName()));
-        if (request.roles() != null) {
-            request.roles().forEach(party::grantRole);
+        Party party;
+        try {
+            PartyKind kind = PartyKind.valueOf(request.kind());
+            party = kind == PartyKind.PERSON
+                ? Party.person(request.partyId(),
+                    new Person(request.firstName(), request.lastName()))
+                : Party.group(request.partyId(), new PartyGroup(request.groupName()));
+            if (request.roles() != null) {
+                request.roles().forEach(party::grantRole);
+            }
+            if (request.contactMechs() != null) {
+                for (ContactMechDto mech : request.contactMechs) {
+                    party.linkContactMech(new ContactMech(mech.contactMechId(),
+                        ContactMechType.valueOf(mech.type()), mech.value()),
+                        mech.purposes() == null ? Set.of()
+                            : mech.purposes().stream().map(ContactMechPurpose::valueOf)
+                                .collect(java.util.stream.Collectors.toSet()));
+                }
+            }
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(null);
         }
         partyService.upsert(party);
         return ResponseEntity.status(HttpStatus.CREATED).body(toResponse(party));
@@ -59,7 +83,12 @@ public class PartyController {
         String displayName = party.kind() == PartyKind.PERSON
             ? party.person().displayName()
             : party.group().groupName();
+        List<ContactMechDto> mechs = party.contactMechs().stream()
+            .map(m -> new ContactMechDto(m.mech().contactMechId(), m.mech().type().name(),
+                m.mech().value(),
+                m.purposes().stream().map(Enum::name).collect(java.util.stream.Collectors.toSet())))
+            .toList();
         return new PartyResponse(party.partyId(), party.kind().name(), displayName,
-            party.roles());
+            party.roles(), mechs);
     }
 }

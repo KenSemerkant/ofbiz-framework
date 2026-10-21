@@ -20,6 +20,7 @@ public final class Party {
     private final PartyGroup group;
     private final Set<String> roles = new LinkedHashSet<>();
     private final List<PartyRelationship> relationships = new ArrayList<>();
+    private final List<PartyContactMech> contactMechs = new ArrayList<>();
 
     public Party(String partyId, PartyKind kind, Person person, PartyGroup group,
             Collection<String> roles, Collection<PartyRelationship> relationships) {
@@ -89,6 +90,22 @@ public final class Party {
         return roles.contains(roleTypeId);
     }
 
+    /** Links a contact mech (purposes validated by PartyContactMech). */
+    public boolean linkContactMech(ContactMech mech, Set<ContactMechPurpose> purposes) {
+        PartyContactMech linked = new PartyContactMech(mech, purposes);
+        if (contactMechs.stream().anyMatch(c -> c.mech().contactMechId()
+                .equals(mech.contactMechId()))) {
+            return false;
+        }
+        return contactMechs.add(linked);
+    }
+
+    /** @return true if a mech with this id was linked and is now removed. */
+    public boolean unlinkContactMech(String contactMechId) {
+        return contactMechs.removeIf(
+            c -> c.mech().contactMechId().equals(contactMechId));
+    }
+
     public List<PartyRelationship> activeRelationships(Instant at) {
         return relationships.stream().filter(r -> r.activeAt(at)).toList();
     }
@@ -115,5 +132,9 @@ public final class Party {
 
     public List<PartyRelationship> relationships() {
         return List.copyOf(relationships);
+    }
+
+    public List<PartyContactMech> contactMechs() {
+        return List.copyOf(contactMechs);
     }
 }

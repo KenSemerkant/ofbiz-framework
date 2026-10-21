@@ -40,17 +40,22 @@ public class PartyEntity {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt = Instant.now();
 
+    /** JSON array of contact mechs (P2-F1-S2). */
+    @Column(name = "contact_mechs", nullable = false)
+    private String contactMechs = "[]";
+
     public PartyEntity() {
     }
 
     public PartyEntity(String partyId, String kind, String firstName, String lastName,
-            String groupName, Set<String> roles) {
+            String groupName, Set<String> roles, String contactMechsJson) {
         this.partyId = partyId;
         this.kind = kind;
         this.firstName = firstName;
         this.lastName = lastName;
         this.groupName = groupName;
         this.roles = new LinkedHashSet<>(roles);
+        this.contactMechs = contactMechsJson;
     }
 
     public String getPartyId() {
@@ -79,5 +84,9 @@ public class PartyEntity {
 
     public Instant getUpdatedAt() {
         return updatedAt;
+    }
+
+    public String getContactMechs() {
+        return contactMechs;
     }
 }

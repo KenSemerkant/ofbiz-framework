@@ -23,6 +23,7 @@ public class JacksonPartySerializer implements PartySerializer {
             fields.put("groupName", party.group().groupName());
         }
         fields.put("roles", party.roles());
+        fields.put("contactMechs", ContactMechJson.serialize(party.contactMechs()));
         return mapper.writeValueAsString(fields);
     }
 }

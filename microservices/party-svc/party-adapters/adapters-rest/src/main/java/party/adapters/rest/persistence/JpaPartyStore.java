@@ -30,7 +30,7 @@ public class JpaPartyStore implements PartyStore {
             party.person() == null ? null : party.person().firstName(),
             party.person() == null ? null : party.person().lastName(),
             party.group() == null ? null : party.group().groupName(),
-            party.roles()));
+            party.roles(), ContactMechJson.serialize(party.contactMechs())));
     }
 
     private Party toDomain(PartyEntity entity) {
@@ -41,6 +41,9 @@ public class JpaPartyStore implements PartyStore {
         PartyGroup group = kind == PartyKind.PARTY_GROUP
             ? new PartyGroup(entity.getGroupName())
             : null;
-        return new Party(entity.getPartyId(), kind, person, group, entity.getRoles(), null);
+        Party party = new Party(entity.getPartyId(), kind, person, group, entity.getRoles(), null);
+        ContactMechJson.deserialize(entity.getContactMechs())
+            .forEach(linked -> party.linkContactMech(linked.mech(), linked.purposes()));
+        return party;
     }
 }
