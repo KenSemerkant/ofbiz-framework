@@ -35,6 +35,12 @@ spring:
               uri: ${gateway.search.uri:http://search-svc.ofbiz.svc:8080}
               predicates:
                 - Path=/api/v1/search/**
+            - id: party-svc
+              uri: ${gateway.party.uri:http://party-svc.ofbiz.svc:8080}
+              predicates:
+                - Path=/api/v1/parties/**
+              metadata:
+                required-role: CUSTOMER
             - id: monolith
               uri: ${gateway.monolith.uri:https://ofbiz-monolith.ofbiz.svc:8443}
               predicates:

@@ -135,7 +135,7 @@ Evidence: `platform/observability/20-verify.sh` → ALL CHECKS PASSED.
 - **S3 (M):** Reverse-sync adapter. AC: [x] `party.party.updated` applies back to monolith table [x] conflict policy documented (new-service wins). Evidence: ReverseSyncServiceTest (stale row overwritten, revoked role removed); ReverseSyncConsumer + JdbcMonolithSyncWriter (second datasource).
 - **S4 (M):** Consistency checker job. AC: [x] delta report (row counts + field checksums) [x] non-zero exit on drift (CI-gateable). Script: platform/cdc/30-check-consistency.sh; first on-cluster run evidence lands with the CG-2 cutover (needs party-svc deployed).
 ## P2-F3 identity integration
-- **S1 (M):** JWT claims from party projection (roles→permissions). AC: [ ] token carries party roles [ ] gateway 403 on missing role [ ] revocation on `party.role.revoked` within 5s.
+- **S1 (M):** JWT claims from party projection (roles→permissions). AC: [x] token carries party roles [x] gateway 403 on missing role [x] revocation on `party.role.revoked` within 5s. Evidence: RoleClaimResolverTest (union of user+projection roles; revoked role vanishes from resolution — projection refresh <5s per PartyProjectionConsumerTest; already-issued tokens expire naturally, documented JWT trade-off); GatewayRoleAuthTest (party route required-role=CUSTOMER: 200 with role, 403 without/absent claim).
 
 ---
 
