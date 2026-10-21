@@ -45,6 +45,9 @@ jobs:
           - name: notification-svc
             dir: microservices/notification-svc
             gradle: ":microservices:notification-svc:notification-adapters:adapters-rest:bootJar"
+          - name: search-svc
+            dir: microservices/search-svc
+            gradle: ":microservices:search-svc:search-adapters:adapters-rest:bootJar"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4

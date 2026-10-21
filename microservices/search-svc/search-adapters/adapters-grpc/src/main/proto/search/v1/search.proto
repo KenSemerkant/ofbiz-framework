@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package search.v1;
+
+option java_package = "search.v1";
+option java_outer_classname = "SearchOuterClass";
+
+// East-west query contract (ADR-010): services call search-svc over gRPC.
+service SearchQuery {
+  rpc Search(SearchRequest) returns (SearchResponse);
+}
+
+message SearchRequest {
+  string query = 1;
+  string index = 2;
+  int32 limit = 3;
+}
+
+message SearchResponse {
+  repeated SearchHit hits = 1;
+}
+
+message SearchHit {
+  string doc_id = 1;
+  double score = 2;
+  string source = 3;
+}

@@ -102,7 +102,7 @@ Evidence: `platform/observability/20-verify.sh` → ALL CHECKS PASSED.
 - **S1 (M):** `notification.requested.v1` consumer + SMTP adapter + templates. AC: [x] test command → email received (mailhog staging) [x] retry then DLQ on failure injection [x] template render with locale. Evidence: `NotificationDeliveryTest` (GreenMail, German locale, redelivery deduped), `NotificationDlqTest` (retry → `notification.requested.v1.dlq`), `ClasspathTemplateRendererTest`.
 
 ## P1-F5 search-svc
-- **S1 (L):** OpenSearch + consumer framework + query API. AC: [ ] index doc via event [ ] gRPC + REST query returns hit [ ] reindex-from-topic command rebuilds index. Current state: pure domain model (`SearchDocument`, `SearchQuery`, `SearchResult`, `SearchIndex` port) with `SearchDomainTest`; application/adapters projects are still empty.
+- **S1 (L):** OpenSearch + consumer framework + query API. AC: [x] index doc via event [x] gRPC + REST query returns hit [x] reindex-from-topic command rebuilds index. Evidence: `SearchApiTest` (real OpenSearch + Kafka Testcontainers): publish to `search.doc.indexed.v1` → indexed; `GET /api/v1/search?q=` returns the hit with score; gRPC `SearchQuery.Search` (generated stub, netty-shaded server on `${search.grpc.port}`) returns the hit; `POST /api/v1/search/reindex` drops and rebuilds a wiped index from the topic (`ReindexRunner` one-shot earliest-offset consumer). Consumer retry-then-DLQ mirrors notification-svc (`KafkaConfig`); layering green + red-provable (`ServiceArchitectureTest`, `SearchConformanceTest`); image in CI matrix (`ci.yml` service-images).
 
 ---
 
