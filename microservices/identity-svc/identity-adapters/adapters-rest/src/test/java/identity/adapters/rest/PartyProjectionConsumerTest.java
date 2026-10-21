@@ -10,6 +10,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.apache.kafka.clients.admin.NewTopic;
+import org.springframework.kafka.config.TopicBuilder;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -67,6 +69,16 @@ class PartyProjectionConsumerTest {
 
     PartyProjectionConsumerTest(@Autowired ProducerFactory<Object, Object> producerFactory) {
         this.kafka = new KafkaTemplate<>(producerFactory);
+    }
+
+    @org.springframework.boot.test.context.TestConfiguration
+    static class TopicConfig {
+        // create BEFORE the pattern subscription polls: pattern metadata
+        // refresh can lag an auto-created topic by minutes
+        @org.springframework.context.annotation.Bean
+        NewTopic partyCreated() {
+            return TopicBuilder.name("party.party.created.v1").build();
+        }
     }
 
     @Test
