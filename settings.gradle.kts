@@ -35,4 +35,8 @@ include(
     ":microservices:search-svc:search-application",
     ":microservices:search-svc:search-adapters:adapters-rest",
     ":microservices:search-svc:search-adapters:adapters-grpc",
+    ":microservices:party-svc:party-domain",
+    ":microservices:party-svc:party-application",
+    ":microservices:party-svc:party-adapters:adapters-grpc",
+    ":microservices:party-svc:party-adapters:adapters-rest",
 )

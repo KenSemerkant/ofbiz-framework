@@ -1,0 +1,8 @@
+# Production profile: every credential comes from the environment and has no
+# fallback, so a missing variable fails startup instead of booting with a
+# known development secret.
+spring:
+  datasource:
+    url: ${PARTY_DB_URL}
+    username: ${PARTY_DB_USER}
+    password: ${PARTY_DB_PASSWORD}
