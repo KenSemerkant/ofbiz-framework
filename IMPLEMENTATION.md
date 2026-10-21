@@ -104,6 +104,12 @@ Evidence: `platform/observability/20-verify.sh` → ALL CHECKS PASSED.
 ## P1-F5 search-svc
 - **S1 (L):** OpenSearch + consumer framework + query API. AC: [x] index doc via event [x] gRPC + REST query returns hit [x] reindex-from-topic command rebuilds index. Evidence: `SearchApiTest` (real OpenSearch + Kafka Testcontainers): publish to `search.doc.indexed.v1` → indexed; `GET /api/v1/search?q=` returns the hit with score; gRPC `SearchQuery.Search` (generated stub, netty-shaded server on `${search.grpc.port}`) returns the hit; `POST /api/v1/search/reindex` drops and rebuilds a wiped index from the topic (`ReindexRunner` one-shot earliest-offset consumer). Consumer retry-then-DLQ mirrors notification-svc (`KafkaConfig`); layering green + red-provable (`ServiceArchitectureTest`, `SearchConformanceTest`); image in CI matrix (`ci.yml` service-images).
 
+## P1-F6 platform services on-cluster (CG-1 closeout)
+**Epic: all five services live on the kind stack with gate evidence (CG: last two CG-1 boxes checkable)**
+- **S1 (M):** Backing stores in the local profile: per-service Postgres databases (identity, audit, notification — single Postgres instance, DB-per-service databases per ADR §7) and an OpenSearch endpoint for search-svc (reuse of the observability instance is acceptable locally if index namespaces stay separate; dedicated cluster otherwise). AC: [ ] each service's Flyway migration runs green on its database at startup [ ] search-svc indexes into its OpenSearch endpoint.
+- **S2 (M):** Topics + deploy: `search.doc.indexed.v1` (+ `.dlq`) topic and KafkaUser for search-svc in `platform/helm/topics/10-create.sh`; deploy script (`platform/services/10-deploy.sh`) installs all five services via `service-chart` with mesh injection, readiness green; gateway route table gains `/api/v1/search/**` and identity issuer wiring (`IDENTITY_ISSUER` env). AC: [ ] `kubectl -n ofbiz get pods` all Ready [ ] plaintext east-west call fails, mTLS succeeds (reuse `10-verify-mtls.sh` assertions).
+- **S3 (M):** Gate evidence: `platform/services/20-verify.sh` — single-process OIDC e2e (client_credentials token from identity-svc → 200 on gateway `/api/v1/demo/**`), Jaeger trace link for a gateway→demo-svc request, a Prometheus query per service, and a Loki/OpenSearch log query per service; DLQ topics exist. AC: [ ] script prints ALL CHECKS PASSED with evidence links [ ] CG-1 last two boxes checked with those links.
+
 ---
 
 # PHASE 2 — party-svc + CDC Bridge
