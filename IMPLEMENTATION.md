@@ -78,7 +78,7 @@ Evidence: `platform/observability/20-verify.sh` → ALL CHECKS PASSED.
 - [x] gateway routes to demo-svc with JWT validation + rate limit proven (429 on burst) — `GatewayRoutingTest`
 - [x] audit-svc consumes a demo topic wildcard and stores events queryably — `AuditIngestTest`
 - [x] notification-svc sends a test email on `notification.requested.v1` — `NotificationDeliveryTest`
-- [ ] search-svc indexes a demo document and answers a query via API (domain model + unit tests only)
+- [x] search-svc indexes a demo document and answers a query via API — `SearchApiTest` (real OpenSearch + Kafka Testcontainers): event on `search.doc.indexed.v1` → indexed; REST `/api/v1/search` and gRPC `SearchQuery.Search` return the hit; reindex-from-topic rebuilds a wiped index
 - [ ] All 5 services: CI green, dashboards live, mTLS-only, DLQ wired
 
 ## P1-F1 identity-svc
