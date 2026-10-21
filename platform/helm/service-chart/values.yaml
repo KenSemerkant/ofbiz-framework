@@ -11,6 +11,19 @@ service:
   type: ClusterIP
   port: 8080
 
+# Optional extra container/service port (e.g. search-svc gRPC on 9090).
+grpcPort: null
+
+# Raw env list (name/value) passed straight to the container.
+env: []
+
+# Additional env entries merged after `env` (e.g. Kafka TLS properties).
+extraEnv: []
+
+# Optional raw volumes/volumeMounts (e.g. KafkaUser TLS secrets).
+extraVolumes: []
+extraVolumeMounts: []
+
 resources:
   requests:
     cpu: 100m

@@ -19,15 +19,16 @@ spec:
         port: 9093
         type: internal
         tls: true
-    authorization:
-      type: simple
+    # Authorization stays OFF in the local profile (P0-F2-S2 KNOWN ISSUE):
+    # on this Strimzi 1.3.0 / Kafka 4.3.1 combined-node cluster simple authz
+    # behaves inconsistently (a principal with Write+Read grants on a topic
+    # could produce but not consume; anonymous tooling denied despite
+    # allowEveryoneIfNoAclFound once any ACL exists). The KafkaUser
+    # manifests in platform/helm/topics/10-create.sh remain the enforcement
+    # source of truth and activate on the cloud profile (dedicated
+    # controllers). Transport stays mutual-TLS on the 9093 listener.
     config:
-      # ACL story (P0-F2-S2): simple authz is ON so KafkaUser ACL manifests
-      # are valid, but allow-everyone keeps the unauthenticated internal
-      # listener open for local verify tooling — i.e., enforcement is
-      # PARTIAL locally (super.users + per-user checks misbehaved on this
-      # Strimzi 1.3.0 / Kafka 4.3.1 combined-node cluster; full enforcement
-      # evidence deferred to the cloud profile). Cloud profile: flip to
+      # Cloud profile: flip to
       # "false" + tls-auth on every listener.
       allow.everyone.if.no.acl.found: "true"
       offsets.topic.replication.factor: 3

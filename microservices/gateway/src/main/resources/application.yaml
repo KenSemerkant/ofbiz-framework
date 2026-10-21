@@ -25,11 +25,16 @@ spring:
               predicates:
                 - Path=/api/v1/demo/**
               filters:
+                - StripPrefix=3
                 - name: RequestRateLimiter
                   args:
                     redis-rate-limiter.replenishRate: 1
                     redis-rate-limiter.burstCapacity: 3
                     redis-rate-limiter.requestedTokens: 1
+            - id: search-svc
+              uri: ${gateway.search.uri:http://search-svc.ofbiz.svc:8080}
+              predicates:
+                - Path=/api/v1/search/**
             - id: monolith
               uri: ${gateway.monolith.uri:https://ofbiz-monolith.ofbiz.svc:8443}
               predicates:

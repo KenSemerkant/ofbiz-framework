@@ -1,0 +1,55 @@
+# P1-F6-S1: local-profile Postgres — one instance, DB-per-service databases
+# (ADR §7: no shared schemas; each service owns its database and credentials).
+# Dev credentials only; the cloud profile swaps to managed Postgres.
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: postgres-init, namespace: ofbiz}
+data:
+  init.sql: |
+    CREATE ROLE identity LOGIN PASSWORD 'identity';
+    CREATE ROLE audit LOGIN PASSWORD 'audit';
+    CREATE ROLE notification LOGIN PASSWORD 'notification';
+    CREATE DATABASE identity OWNER identity;
+    CREATE DATABASE audit OWNER audit;
+    CREATE DATABASE notification OWNER notification;
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata: {name: postgres, namespace: ofbiz}
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector: {matchLabels: {app: postgres}}
+  template:
+    metadata: {labels: {app: postgres, sidecar.istio.io/inject: "false"}}
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          env:
+            - {name: POSTGRES_USER, value: admin}
+            - {name: POSTGRES_PASSWORD, value: admin}
+            - {name: PGDATA, value: /var/lib/postgresql/data/pgdata}
+          ports: [{containerPort: 5432}]
+          volumeMounts:
+            - {name: data, mountPath: /var/lib/postgresql/data}
+            - {name: init, mountPath: /docker-entrypoint-initdb.d}
+          readinessProbe:
+            exec: {command: [pg_isready, -U, admin]}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: init
+          configMap: {name: postgres-init}
+  volumeClaimTemplates:
+    - metadata: {name: data}
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources: {requests: {storage: 2Gi}}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: postgres, namespace: ofbiz}
+spec:
+  selector: {app: postgres}
+  ports: [{name: pg, port: 5432}]

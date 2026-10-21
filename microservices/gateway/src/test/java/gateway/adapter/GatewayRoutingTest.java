@@ -120,6 +120,12 @@ class GatewayRoutingTest {
     }
 
     @Test
+    void actuatorHealthIsOpenForKubeletProbes() throws Exception {
+        // kubelet liveness/readiness probes carry no credentials — must not 401
+        assertEquals(200, get("/actuator/health/liveness", null, Map.of()).statusCode());
+    }
+
+    @Test
     void expiredTokenIsRejected() throws Exception {
         String expired = token("expired-subject", Instant.now().minusSeconds(120));
         assertEquals(401, get("/api/v1/demo/hello", expired, Map.of()).statusCode());

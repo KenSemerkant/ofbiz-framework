@@ -17,7 +17,7 @@ public class SearchDocListener {
         this.searchService = searchService;
     }
 
-    @KafkaListener(id = "search-doc-index", topics = "${search.topic}")
+    @KafkaListener(id = "search-doc-index", groupId = "search-svc", topics = "${search.topic}")
     public void on(String payload) {
         IndexEvent event = IndexEvent.parse(payload, mapper);
         searchService.index(

@@ -25,7 +25,7 @@ spec:
         - name: jaeger
           image: jaegertracing/all-in-one:1.62.0
           args: ["--query.http-server.host-port=:16686"]
-          ports: [{containerPort: 16686}, {containerPort: 4317}]
+          ports: [{containerPort: 16686}, {containerPort: 4317}, {containerPort: 4318}]
           env:
             - {name: COLLECTOR_OTLP_ENABLED, value: "true"}
             - {name: COLLECTOR_ZIPKIN_HOST_PORT, value: ":9411"}
@@ -40,7 +40,7 @@ spec: {selector: {app: jaeger}, ports: [{name: query, port: 16686}]}
 apiVersion: v1
 kind: Service
 metadata: {name: jaeger-collector, namespace: observability}
-spec: {selector: {app: jaeger}, ports: [{name: otlp-grpc, port: 4317}, {name: zipkin, port: 9411}]}
+spec: {selector: {app: jaeger}, ports: [{name: otlp-grpc, port: 4317}, {name: otlp-http, port: 4318}, {name: zipkin, port: 9411}]}
 ---
 # Istio: send mesh traces straight to Jaeger's OTLP endpoint
 apiVersion: telemetry.istio.io/v1
@@ -61,6 +61,24 @@ data:
     scrape_configs:
       - job_name: istiod
         static_configs: [{targets: ["istiod.istio-system.svc.cluster.local:15014"]}]
+      # P1-F6-S3: per-service metrics via the sidecar agent port (plaintext,
+      # exempt from PeerAuth STRICT) — envoy metrics per workload now, JVM
+      # /actuator/prometheus merge when services add the merge annotation.
+      - job_name: ofbiz-sidecars
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces: {names: [ofbiz]}
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_sidecar_istio_io_status]
+            action: keep
+            regex: .+
+          - source_labels: [__address__]
+            action: replace
+            regex: ([^:]+)(:\d+)?
+            replacement: $1:15020
+            target_label: __address__
+          - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name]
+            target_label: service
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -71,6 +89,7 @@ spec:
   template:
     metadata: {labels: {app: prometheus}}
     spec:
+      serviceAccountName: prometheus
       containers:
         - name: prometheus
           image: prom/prometheus:v3.5.0
@@ -280,3 +299,25 @@ data:
         Logstash_Format Off
         Replace_Dots  On
         Retry_Limit   False
+---
+# P1-F6-S3: RBAC for the ofbiz-sidecars pod discovery scrape job
+apiVersion: v1
+kind: ServiceAccount
+metadata: {name: prometheus, namespace: observability}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata: {name: prometheus-ofbiz}
+rules:
+  - apiGroups: [""]
+    resources: [pods, services, endpoints, nodes]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata: {name: prometheus-ofbiz}
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: prometheus-ofbiz}
+subjects:
+  - kind: ServiceAccount
+    name: prometheus
+    namespace: observability

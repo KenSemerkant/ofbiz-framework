@@ -14,8 +14,15 @@ spring:
       ssl:
         enabled: ${REDIS_SSL:true}
 management:
-  otlp:
+  opentelemetry:
     tracing:
-      # Jaeger collector accepts OTLP gRPC on 4317 (platform/observability-stack.yaml)
-      transport: grpc
-      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://jaeger-collector.observability.svc:4317}
+      export:
+        otlp:
+          # HTTP/protobuf OTLP to the Jaeger collector (grpc sender artifact
+          # is not resolvable under the Boot BOM's OTel constraint).
+          # Boot 4 property path — the 3.x management.otlp.tracing.* keys
+          # are deprecated no-ops.
+          endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://jaeger-collector.observability.svc:4318/v1/traces}
+  tracing:
+    sampling:
+      probability: ${TRACING_SAMPLING:1.0}

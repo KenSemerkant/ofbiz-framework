@@ -19,6 +19,8 @@ public class SecurityConfig {
             .authorizeExchange(exchanges -> exchanges
                 // CORS preflight carries no credentials
                 .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                // kubelet probes carry no credentials (CG-1 on-cluster)
+                .pathMatchers("/actuator/health/**").permitAll()
                 .anyExchange().authenticated())
             .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()));
         return http.build();
