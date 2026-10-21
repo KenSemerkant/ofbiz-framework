@@ -6,7 +6,8 @@ plugins {
 }
 
 dependencies {
-    implementation(platform("io.grpc:grpc-bom:1.66.0"))
+    // 1.75.0: CVE-2025-55163 (grpc-netty-shaded MadeYouReset HTTP/2 DDoS)
+    implementation(platform("io.grpc:grpc-bom:1.75.0"))
     implementation("io.grpc:grpc-services")
     implementation("io.grpc:grpc-protobuf")
     implementation("io.grpc:grpc-stub")
@@ -20,7 +21,7 @@ protobuf {
     }
     plugins {
         create("grpc") {
-            artifact = "io.grpc:protoc-gen-grpc-java:1.66.0"
+            artifact = "io.grpc:protoc-gen-grpc-java:1.75.0"
         }
     }
     generateProtoTasks {
