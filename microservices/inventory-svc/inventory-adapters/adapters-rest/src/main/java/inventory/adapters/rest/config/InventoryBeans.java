@@ -48,4 +48,10 @@ public class InventoryBeans {
             OutboxWriter outbox, InventorySerializer serializer) {
         return new ShipmentService(shipments, reservations, outbox, serializer);
     }
+
+    @Bean
+    inventory.application.MonolithProjectionService monolithProjectionService(
+            inventory.adapters.rest.persistence.JdbcMonolithShipmentProjectionSink sink) {
+        return new inventory.application.MonolithProjectionService(sink);
+    }
 }

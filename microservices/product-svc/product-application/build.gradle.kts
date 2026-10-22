@@ -4,5 +4,6 @@ plugins {
 
 dependencies {
     api(project(":microservices:product-svc:product-domain"))
+    api(project(":platform:projection"))
     testImplementation(project(":platform:arch-rules"))
 }

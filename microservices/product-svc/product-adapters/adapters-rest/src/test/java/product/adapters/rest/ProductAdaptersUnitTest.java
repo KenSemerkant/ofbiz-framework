@@ -189,4 +189,79 @@ class ProductAdaptersUnitTest {
         assertTrue(new CategoryEntity().getProductCategoryId() == null);
         assertTrue(new OutboxEntryEntity().getEventType() == null);
     }
+
+    @Test
+    void reverseSyncConsumerParsesEnvelopes() {
+        List<product.application.ReverseSyncService.ProductSnapshot> seen =
+            new java.util.ArrayList<>();
+        var deleted = new java.util.ArrayList<String>();
+        var categories = new java.util.ArrayList<String[]>();
+        product.application.MonolithSyncWriter tracking = new product.application.MonolithSyncWriter() {
+            @Override
+            public void syncProduct(String productId, String productTypeId,
+                    String internalName, String productName, java.util.Set<String> categoryIds,
+                    List<product.domain.ProductPrice> prices,
+                    List<product.domain.ProductAssoc> assocs) {
+                seen.add(new product.application.ReverseSyncService.ProductSnapshot(productId,
+                    productTypeId, internalName, productName, categoryIds, prices, assocs));
+            }
+
+            @Override
+            public void syncCategory(String productCategoryId, String categoryName) {
+                categories.add(new String[] {productCategoryId, categoryName});
+            }
+
+            @Override
+            public void deleteProduct(String productId) {
+                deleted.add(productId);
+            }
+        };
+        product.adapters.rest.events.ReverseSyncConsumer consumer =
+            new product.adapters.rest.events.ReverseSyncConsumer(
+                new product.application.ReverseSyncService(tracking));
+        // created/updated: full aggregate (epoch-millis dates and numeric price)
+        consumer.onProductEvent("""
+            {"productId":"PRD1","productTypeId":"FINISHED_GOOD","internalName":"Widget",
+             "productName":"Blue Widget","categories":["CAT1"],
+             "prices":[{"productPriceTypeId":"DEFAULT_PRICE","currencyUomId":"USD",
+                        "fromDate":0,"price":19.99}],
+             "associations":[]}""");
+        assertEquals("PRD1", seen.get(0).productId());
+        assertEquals(java.util.Set.of("CAT1"), seen.get(0).categoryIds());
+        assertEquals(1, seen.get(0).prices().size());
+        // category rename event
+        consumer.onProductEvent(
+            "{\"productCategoryId\":\"CAT1\",\"categoryName\":\"Renamed\"}");
+        assertEquals("CAT1", categories.get(0)[0]);
+        // deleted: id only
+        consumer.onProductEvent("{\"productId\":\"PRD1\"}");
+        assertEquals(List.of("PRD1"), deleted);
+    }
+
+    @Test
+    void monolithSyncConfigBuildsBeans() {
+        var config = new product.adapters.rest.config.MonolithSyncConfig();
+        var ds = config.productDataSource("jdbc:postgresql://localhost/x", "u", "p");
+        org.junit.jupiter.api.Assertions.assertNotNull(ds);
+        var jdbc = config.monolithJdbc(ds);
+        org.junit.jupiter.api.Assertions.assertNotNull(jdbc);
+        org.junit.jupiter.api.Assertions.assertNotNull(config.monolithSyncWriter(jdbc));
+        org.junit.jupiter.api.Assertions.assertNotNull(config.reverseSyncService(
+            new product.application.MonolithSyncWriter() {
+                @Override
+                public void syncProduct(String productId, String productTypeId,
+                        String internalName, String productName, java.util.Set<String> categoryIds,
+                        List<product.domain.ProductPrice> prices,
+                        List<product.domain.ProductAssoc> assocs) {
+                }
+
+                @Override
+                public void syncCategory(String productCategoryId, String categoryName) {
+                }
+
+                @Override
+                public void deleteProduct(String productId) {
+                }
+            }));
+    }
 }

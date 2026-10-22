@@ -45,4 +45,10 @@ public class ProductBeans {
     product.application.StoreService storeService(product.application.Stores stores) {
         return new product.application.StoreService(stores);
     }
+
+    @Bean
+    product.application.MonolithProjectionService monolithProjectionService(
+            product.adapters.rest.persistence.JdbcMonolithProductProjectionSink sink) {
+        return new product.application.MonolithProjectionService(sink);
+    }
 }
