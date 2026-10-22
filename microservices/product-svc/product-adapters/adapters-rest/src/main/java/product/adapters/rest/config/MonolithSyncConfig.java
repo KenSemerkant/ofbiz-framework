@@ -52,6 +52,19 @@ public class MonolithSyncConfig {
         return new JdbcTemplate(dataSource);
     }
 
+    /**
+     * The service-own JdbcTemplate. Declaring any JdbcTemplate bean makes
+     * Boot's JdbcTemplateAutoConfiguration back off, so without this the
+     * monolithJdbc above would be the only candidate — and the CDC
+     * projection sink would write to the monolith DB (P3-GATE deploy bug).
+     */
+    @Bean
+    @org.springframework.context.annotation.Primary
+    public JdbcTemplate productJdbc(
+            @Qualifier("productDataSource") DataSource dataSource) {
+        return new JdbcTemplate(dataSource);
+    }
+
     @Bean
     public MonolithSyncWriter monolithSyncWriter(
             @Qualifier("monolithJdbc") JdbcTemplate monolith) {

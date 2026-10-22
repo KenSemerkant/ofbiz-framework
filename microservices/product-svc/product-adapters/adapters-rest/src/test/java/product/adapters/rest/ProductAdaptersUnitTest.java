@@ -245,6 +245,9 @@ class ProductAdaptersUnitTest {
         org.junit.jupiter.api.Assertions.assertNotNull(ds);
         var jdbc = config.monolithJdbc(ds);
         org.junit.jupiter.api.Assertions.assertNotNull(jdbc);
+        // the service-own JdbcTemplate must exist too, or the projection
+        // sink would fall back to the monolith one (deploy bug)
+        org.junit.jupiter.api.Assertions.assertNotNull(config.productJdbc(ds));
         org.junit.jupiter.api.Assertions.assertNotNull(config.monolithSyncWriter(jdbc));
         org.junit.jupiter.api.Assertions.assertNotNull(config.reverseSyncService(
             new product.application.MonolithSyncWriter() {

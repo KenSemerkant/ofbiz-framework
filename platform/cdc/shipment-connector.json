@@ -1,0 +1,27 @@
+{
+  "name": "monolith-shipment",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "database.hostname": "monolith-db",
+    "database.port": "5432",
+    "database.user": "ofbiz",
+    "database.password": "ofbiz",
+    "database.dbname": "ofbiz",
+    "plugin.name": "pgoutput",
+    "topic.prefix": "ofbiz-shipment",
+    "table.include.list": "public.SHIPMENT,public.SHIPMENT_ITEM",
+    "snapshot.mode": "initial",
+    "snapshot.fetch.size": "1000",
+    "heartbeat.interval.ms": "1000",
+    "tombstones.on.delete": "false",
+    "decimal.handling.mode": "string",
+    "transforms": "dropSchema",
+    "transforms.dropSchema.type": "org.apache.kafka.connect.transforms.RegexRouter",
+    "transforms.dropSchema.regex": "ofbiz-shipment\\.public\\.(.*)",
+    "transforms.dropSchema.replacement": "ofbiz.$1",
+    "key.converter.apicurio.registry.url": "http://schema-registry:8080/apis/registry/v2",
+    "value.converter.apicurio.registry.url": "http://schema-registry:8080/apis/registry/v2",
+    "key.converter.apicurio.registry.auto-register": "true",
+    "value.converter.apicurio.registry.auto-register": "true"
+  }
+}

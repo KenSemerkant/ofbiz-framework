@@ -45,6 +45,16 @@ class ProductServiceTest {
                 return storeData.values().stream()
                     .anyMatch(p -> p.categoryIds().contains(categoryId));
             }
+
+            @Override
+            public java.util.List<Product> list(int page, int size) {
+                return java.util.List.of();
+            }
+
+            @Override
+            public long count() {
+                return 0;
+            }
         },
         (eventType, aggregateKey, payload) -> outboxEvents.add(eventType),
         new ProductSerializer() {

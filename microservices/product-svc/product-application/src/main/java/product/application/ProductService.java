@@ -37,6 +37,15 @@ public class ProductService {
         return store.find(productId);
     }
 
+    /** Catalog browse (P3-GATE SPA): one page of products, id-ordered. */
+    public java.util.List<Product> list(int page, int size) {
+        return store.list(page, size);
+    }
+
+    public long count() {
+        return store.count();
+    }
+
     public void upsert(Product product) {
         Optional<Product> existing = store.find(product.productId());
         store.save(product);

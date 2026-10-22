@@ -1,16 +1,19 @@
 <!doctype html>
 <!-- CG-2 SPA skeleton: OIDC (authorization code + PKCE) login, then lists
-     and searches parties through the gateway (GET /api/v1/parties). No
-     framework, no build step — later phases grow this into the real SPA. -->
+     and searches parties through the gateway (GET /api/v1/parties).
+     P3-GATE: catalog browse + price lookup through product-svc's new APIs
+     (GET /api/v1/products, GET /api/v1/products/{id}/price). No framework,
+     no build step — later phases grow this into the real SPA. -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>OFBiz — Parties</title>
+  <title>OFBiz — Parties &amp; Catalog</title>
   <style>
     body { font-family: system-ui, sans-serif; margin: 2rem; }
     table { border-collapse: collapse; margin-top: 1rem; }
     th, td { border: 1px solid #ccc; padding: .4rem .8rem; text-align: left; }
     #msg { color: #b00; }
+    h2 { margin-top: 2rem; }
   </style>
 </head>
 <body>
@@ -19,6 +22,11 @@
   <button id="login">Sign in</button>
   <form id="search"><input id="q" placeholder="role, e.g. CUSTOMER"><button>Search</button></form>
   <table><thead><tr><th>ID</th><th>Kind</th><th>Name</th></tr></thead><tbody id="rows"></tbody></table>
+
+  <h2>Catalog</h2>
+  <p id="cmsg"></p>
+  <button id="catalog">Browse catalog</button>
+  <table><thead><tr><th>ID</th><th>Internal name</th><th>Product name</th><th>Price (USD)</th></tr></thead><tbody id="crows"></tbody></table>
 
   <script>
     // dev: SPA on :4200, gateway on :8080 (same host)
@@ -75,6 +83,34 @@
       e.preventDefault();
       load(document.getElementById('q').value || 'CUSTOMER');
     };
+
+    // P3-GATE catalog browse: one page of products from product-svc via the
+    // gateway; per-row price lookup via the price-resolution API.
+    async function loadCatalog() {
+      const token = sessionStorage.getItem('token');
+      if (!token) { document.getElementById('cmsg').textContent = 'sign in first'; return; }
+      const res = await fetch(`${GATEWAY}/api/v1/products?page=0&size=20`,
+        { headers: { Authorization: 'Bearer ' + token } });
+      if (res.status === 403) { document.getElementById('cmsg').textContent = '403 — token lacks the required role'; return; }
+      if (!res.ok) { document.getElementById('cmsg').textContent = 'gateway error ' + res.status; return; }
+      const page = await res.json();
+      document.getElementById('crows').innerHTML = (page.items || []).map(p =>
+        `<tr><td>${p.productId}</td><td>${p.internalName}</td><td>${p.productName ?? ''}</td>` +
+        `<td id="price-${p.productId}"><button onclick="lookupPrice('${p.productId}')">lookup</button></td></tr>`).join('');
+      document.getElementById('cmsg').textContent =
+        `${page.totalElements} products (page ${page.page + 1}/${page.totalPages})`;
+    }
+
+    async function lookupPrice(productId) {
+      const token = sessionStorage.getItem('token');
+      const cell = document.getElementById('price-' + productId);
+      const res = await fetch(
+        `${GATEWAY}/api/v1/products/${productId}/price?currency=USD&at=${encodeURIComponent(new Date().toISOString())}`,
+        { headers: { Authorization: 'Bearer ' + token } });
+      cell.textContent = res.ok ? (await res.json()).price + ' USD' : 'n/a';
+    }
+
+    document.getElementById('catalog').onclick = loadCatalog;
   </script>
 </body>
 </html>

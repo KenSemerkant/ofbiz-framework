@@ -26,7 +26,7 @@ done
 trap 'kubectl -n "${NS}" delete pod "${TOOLS_POD}" --ignore-not-found --force --grace-period=0 >/dev/null 2>&1' EXIT
 
 echo "==> 1. Deployments Ready"
-for d in identity-svc gateway audit-svc notification-svc search-svc; do
+for d in identity-svc gateway audit-svc notification-svc search-svc party-svc product-svc inventory-svc; do
   if kubectl -n "${NS}" rollout status "deploy/${d}" --timeout=30s >/dev/null 2>&1; then
     check "${d} Ready" ok ok
   else
@@ -42,11 +42,26 @@ else
 fi
 
 echo "==> 3. Topics declared (CRs) + functional (search e2e proves the broker side)"
-for t in search.doc.indexed.v1 search.doc.indexed.v1.dlq; do
+for t in search.doc.indexed.v1 search.doc.indexed.v1.dlq \
+  product.product.created.v1 product.product.updated.v1 product.product.deleted.v1 \
+  product.price.changed.v1 product.category.updated.v1 \
+  inventory.stock.reserved.v1 inventory.stock.confirmed.v1; do
   if kubectl -n "${NS}" get kafkatopic "${t}" >/dev/null 2>&1; then
     check "kafkatopic ${t}" ok ok
   else
     check "kafkatopic ${t}" ok missing
+  fi
+done
+
+echo "==> 3b. P3 DBs provisioned (product/inventory/search)"
+for db in product inventory search; do
+  TABLES=$(kubectl -n "${NS}" exec postgres-0 -- psql -U admin -d "${db}" -Atc \
+    "SELECT count(*) FROM information_schema.tables WHERE table_schema='public'" 2>/dev/null \
+    | tr -d '[:space:]' || echo 0)
+  if [ "${TABLES}" -gt 0 ] 2>/dev/null; then
+    check "db ${db} has tables (${TABLES})" ok ok
+  else
+    check "db ${db} has tables" ok "none"
   fi
 done
 
@@ -122,7 +137,7 @@ else
 fi
 
 echo "==> 8. Log store hit per service (Loki; selector on the pod-log filename path)"
-for d in identity-svc gateway audit-svc notification-svc search-svc; do
+for d in identity-svc gateway audit-svc notification-svc search-svc party-svc product-svc inventory-svc; do
   RES=$(in_cluster "curl -s -G 'http://loki.observability:3100/loki/api/v1/query_range' \
     --data-urlencode 'query={filename=~\".*${d}.*\"}' --data-urlencode 'limit=1'" || true)
   if echo "${RES}" | grep -q '"values":\[\['; then

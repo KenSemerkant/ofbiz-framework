@@ -116,3 +116,147 @@ metadata: {name: identity-svc, namespace: ofbiz, labels: {strimzi.io/cluster: of
 spec:
   authentication: {type: tls}
 EOF2
+
+# P3: product-svc aggregate topics (outbox relay produces; search-svc
+# consumes, so each carries a DLQ per the P1-F6 convention)
+kubectl -n "${NS}" apply -f - <<'EOF3'
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: product.product.created.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: product.product.created.v1.dlq, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 1, replicas: 3, config: {retention.ms: "2592000000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: product.product.updated.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: product.product.updated.v1.dlq, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 1, replicas: 3, config: {retention.ms: "2592000000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: product.product.deleted.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: product.product.deleted.v1.dlq, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 1, replicas: 3, config: {retention.ms: "2592000000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: product.price.changed.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: product.price.changed.v1.dlq, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 1, replicas: 3, config: {retention.ms: "2592000000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: product.category.updated.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: product.category.updated.v1.dlq, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 1, replicas: 3, config: {retention.ms: "2592000000"}}
+EOF3
+
+# P3: inventory-svc aggregate topics (outbox relay produces)
+kubectl -n "${NS}" apply -f - <<'EOF4'
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: inventory.facility.created.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: inventory.facility.updated.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: inventory.facility.deleted.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: inventory.item.created.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: inventory.stock.received.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: inventory.stock.adjusted.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: inventory.stock.transferred.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: inventory.stock.reserved.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: inventory.stock.confirmed.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: inventory.stock.released.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: inventory.shipment.updated.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: inventory.stock.shipped.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+EOF4
+
+# P3: product-svc principal (produces own aggregate, consumes CDC topics +
+# own events for reverse-sync); inventory-svc principal (produces own
+# aggregate, consumes shipment CDC topics). TLS only — no authorization
+# block (P0-F2-S2 known issue: broker-side authz off locally).
+kubectl -n "${NS}" apply -f - <<'EOF5'
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaUser
+metadata: {name: product-svc, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec:
+  authentication: {type: tls}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaUser
+metadata: {name: inventory-svc, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec:
+  authentication: {type: tls}
+EOF5
+
+for u in product-svc inventory-svc; do
+  kubectl -n "${NS}" wait kafkauser/${u} --for=condition=Ready --timeout=180s
+done
+
+echo "DONE — P3 product/inventory topics + principals applied"

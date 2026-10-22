@@ -21,6 +21,18 @@ public class JpaProductStore implements ProductStore {
     }
 
     @Override
+    public java.util.List<Product> list(int page, int size) {
+        return products.findAll(org.springframework.data.domain.PageRequest.of(page, size,
+                org.springframework.data.domain.Sort.by("productId")))
+            .map(this::toDomain).getContent();
+    }
+
+    @Override
+    public long count() {
+        return products.count();
+    }
+
+    @Override
     public void save(Product product) {
         products.save(new ProductEntity(product.productId(), product.productTypeId(),
             product.internalName(), product.productName(),

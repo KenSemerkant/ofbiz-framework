@@ -1,5 +1,6 @@
 package product.application;
 
+import java.util.List;
 import java.util.Optional;
 import product.domain.Product;
 
@@ -7,6 +8,11 @@ import product.domain.Product;
 public interface ProductStore {
 
     Optional<Product> find(String productId);
+
+    /** Catalog browse (P3-GATE SPA): one page of products, id-ordered. */
+    List<Product> list(int page, int size);
+
+    long count();
 
     void save(Product product);
 

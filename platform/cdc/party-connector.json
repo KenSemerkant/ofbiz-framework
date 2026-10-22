@@ -9,7 +9,7 @@
     "database.dbname": "ofbiz",
     "plugin.name": "pgoutput",
     "topic.prefix": "ofbiz",
-    "table.list": "public.party,public.person,public.party_group,public.party_role",
+    "table.include.list": "public.PARTY,public.PERSON,public.PARTY_GROUP,public.PARTY_ROLE",
     "snapshot.mode": "initial",
     "snapshot.fetch.size": "1000",
     "heartbeat.interval.ms": "1000",

@@ -6,6 +6,12 @@ spring:
   threads:
     virtual:
       enabled: true
+  # P3-F3-S1: consumer idempotency + category-name projection live in the
+  # search database (DB-per-service, ADR-007).
+  datasource:
+    url: ${SEARCH_DB_URL:jdbc:postgresql://localhost:5432/search}
+    username: ${SEARCH_DB_USER:search}
+    password: ${SEARCH_DB_PASSWORD:search}
   jpa:
     hibernate:
       ddl-auto: validate

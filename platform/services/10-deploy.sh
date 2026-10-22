@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 # P1-F6-S2: deploy all five platform services onto the local kind cluster.
+#   P2 added party-svc; P3-GATE adds product-svc + inventory-svc and the
+#   search database (P3-F3-S1 consumer state).
 #   1. backing stores (postgres DB-per-service, redis, mailhog)
 #   2. topics (search.doc.indexed.v1 + DLQ, KafkaUsers + least-privilege ACLs)
 #   3. bootJar + distroless image + kind load per service
@@ -23,13 +25,22 @@ kubectl -n "${NS}" apply -f "${SCRIPT_DIR}/manifests/"
 kubectl -n "${NS}" rollout status statefulset/postgres --timeout=300s
 kubectl -n "${NS}" rollout status deploy/redis --timeout=180s
 kubectl -n "${NS}" rollout status deploy/mailhog --timeout=180s
-# P2: party database (init.sql runs only on first volume init — make it idempotent)
-kubectl -n "${NS}" exec postgres-0 -- psql -U admin -d postgres -tc \
-  "SELECT 1 FROM pg_roles WHERE rolname='party'" | grep -q 1 \
-  || kubectl -n "${NS}" exec postgres-0 -- psql -U admin -d postgres -c "CREATE ROLE party LOGIN PASSWORD 'party'"
-kubectl -n "${NS}" exec postgres-0 -- psql -U admin -d postgres -tc \
-  "SELECT 1 FROM pg_database WHERE datname='party'" | grep -q 1 \
-  || kubectl -n "${NS}" exec postgres-0 -- psql -U admin -d postgres -c "CREATE DATABASE party OWNER party"
+# P2: party database; P3: product/inventory/search databases (init.sql runs
+# only on first volume init — make it idempotent)
+ensure_db() { # role=password=dbname
+  kubectl -n "${NS}" exec postgres-0 -- psql -U admin -d postgres -tc \
+    "SELECT 1 FROM pg_roles WHERE rolname='$1'" | grep -q 1 \
+    || kubectl -n "${NS}" exec postgres-0 -- psql -U admin -d postgres -c \
+      "CREATE ROLE $1 LOGIN PASSWORD '$1'"
+  kubectl -n "${NS}" exec postgres-0 -- psql -U admin -d postgres -tc \
+    "SELECT 1 FROM pg_database WHERE datname='$1'" | grep -q 1 \
+    || kubectl -n "${NS}" exec postgres-0 -- psql -U admin -d postgres -c \
+      "CREATE DATABASE $1 OWNER $1"
+}
+ensure_db party
+ensure_db product
+ensure_db inventory
+ensure_db search
 
 echo "==> [2/4] Topics + KafkaUsers"
 sh "${ROOT}/platform/helm/topics/10-create.sh"
@@ -48,6 +59,8 @@ build_image audit-svc ":microservices:audit-svc:audit-adapters:adapters-rest:boo
 build_image notification-svc ":microservices:notification-svc:notification-adapters:adapters-rest:bootJar" microservices/notification-svc
 build_image search-svc ":microservices:search-svc:search-adapters:adapters-rest:bootJar" microservices/search-svc
 build_image party-svc ":microservices:party-svc:party-adapters:adapters-rest:bootJar" microservices/party-svc
+build_image product-svc ":microservices:product-svc:product-adapters:adapters-rest:bootJar" microservices/product-svc
+build_image inventory-svc ":microservices:inventory-svc:inventory-adapters:adapters-rest:bootJar" microservices/inventory-svc
 
 # Reshape a Strimzi KafkaUser secret into the file layout Boot 4 pem ssl
 # bundles expect: ca.crt (truststore) + user.crt/user.key (keystore).
@@ -65,7 +78,7 @@ kafka_pem_secret() { # kafkauser name
     --dry-run=client -o yaml | kubectl -n "${NS}" apply -f -
   rm -f /tmp/kafka-ca.crt /tmp/kafka-user.key /tmp/kafka-user.crt
 }
-for user in identity-svc audit-svc notification-svc search-svc party-svc; do kafka_pem_secret "${user}"; done
+for user in identity-svc audit-svc notification-svc search-svc party-svc product-svc inventory-svc; do kafka_pem_secret "${user}"; done
 
 # helm args to mount the PEM bundle and speak SSL to Kafka. The pem bundle
 # itself is declared in each service's application.yaml (env vars cannot
@@ -110,7 +123,8 @@ helm -n "${NS}" upgrade --install gateway "${CHART}" \
   --set-string 'env[5].name=REDIS_SSL' --set-string 'env[5].value=false' \
   --set-string "env[6].name=GATEWAY_DEMO_URI" --set-string "env[6].value=http://demo-svc.${NS}.svc:8080" \
   --set-string "env[7].name=OTEL_EXPORTER_OTLP_ENDPOINT" --set-string "env[7].value=http://jaeger-collector.observability.svc:4318/v1/traces" \
-  --set-string 'env[8].name=TRACING_SAMPLING' --set-string 'env[8].value=1.0'
+  --set-string 'env[8].name=TRACING_SAMPLING' --set-string 'env[8].value=1.0' \
+  --set-string 'env[9].name=GATEWAY_PRODUCT_URI' --set-string "env[9].value=http://product-svc.${NS}.svc:8080"
 
 TLS_ARGS_AUDIT="$(tls_args audit-svc)"
 # shellcheck disable=SC2086
@@ -147,9 +161,14 @@ helm -n "${NS}" upgrade --install search-svc "${CHART}" \
   --set replicaCount=1 --set autoscaling.enabled=false --set podDisruptionBudget.enabled=false \
   --set grpcPort=9090 \
   ${TLS_ARGS_SEARCH} \
-  --set-string 'env[0].name=OPENSEARCH_URIS' --set-string 'env[0].value=http://opensearch.observability.svc:9200' \
-  --set-string "env[1].name=KAFKA_BOOTSTRAP_SERVERS" --set-string "env[1].value=${KAFKA}" \
-  --set-string 'env[2].name=SEARCH_GRPC_PORT' --set-string 'env[2].value=9090'
+  --set-string 'env[0].name=SPRING_PROFILES_ACTIVE' --set-string 'env[0].value=prod' \
+  --set-string 'env[1].name=OPENSEARCH_URIS' --set-string 'env[1].value=http://opensearch.observability.svc:9200' \
+  --set-string "env[2].name=KAFKA_BOOTSTRAP_SERVERS" --set-string "env[2].value=${KAFKA}" \
+  --set-string 'env[3].name=SEARCH_GRPC_PORT' --set-string 'env[3].value=9090' \
+  --set-string 'env[4].name=SEARCH_DB_URL' --set-string "env[4].value=jdbc:postgresql://${POSTGRES}/search" \
+  --set-string 'env[5].name=SEARCH_DB_USER' --set-string 'env[5].value=search' \
+  --set-string 'env[6].name=SEARCH_DB_PASSWORD' --set-string 'env[6].value=search' \
+  --set-string 'env[7].name=JAVA_TOOL_OPTIONS' --set-string 'env[7].value=-XX:MaxRAMPercentage=75.0'
 
 TLS_ARGS_PARTY="$(tls_args party-svc)"
 # shellcheck disable=SC2086
@@ -170,8 +189,38 @@ helm -n "${NS}" upgrade --install party-svc "${CHART}" \
   --set-string 'env[9].name=PARTY_MONOLITH_DATASOURCE_PASSWORD' --set-string 'env[9].value=ofbiz' \
   --set-string 'env[10].name=JAVA_TOOL_OPTIONS' --set-string 'env[10].value=-XX:MaxRAMPercentage=75.0'
 
-for deploy in identity-svc gateway audit-svc notification-svc search-svc party-svc; do
+TLS_ARGS_PRODUCT="$(tls_args product-svc)"
+# shellcheck disable=SC2086
+helm -n "${NS}" upgrade --install product-svc "${CHART}" \
+  --set image.repository=product-svc --set image.tag="${TAG}" \
+  --set replicaCount=1 --set autoscaling.enabled=false --set podDisruptionBudget.enabled=false \
+  ${TLS_ARGS_PRODUCT} \
+  --set-string 'env[0].name=SPRING_PROFILES_ACTIVE' --set-string 'env[0].value=prod' \
+  --set-string 'env[1].name=PRODUCT_DB_URL' --set-string "env[1].value=jdbc:postgresql://${POSTGRES}/product" \
+  --set-string 'env[2].name=PRODUCT_DB_USER' --set-string 'env[2].value=product' \
+  --set-string 'env[3].name=PRODUCT_DB_PASSWORD' --set-string 'env[3].value=product' \
+  --set-string "env[4].name=KAFKA_BOOTSTRAP_SERVERS" --set-string "env[4].value=${KAFKA}" \
+  --set-string 'env[5].name=PRODUCT_MONOLITH_SYNC_ENABLED' --set-string 'env[5].value=true' \
+  --set-string 'env[6].name=PRODUCT_MONOLITH_DATASOURCE_URL' --set-string "env[6].value=jdbc:postgresql://monolith-db.${NS}.svc:5432/ofbiz" \
+  --set-string 'env[7].name=PRODUCT_MONOLITH_DATASOURCE_USERNAME' --set-string 'env[7].value=ofbiz' \
+  --set-string 'env[8].name=PRODUCT_MONOLITH_DATASOURCE_PASSWORD' --set-string 'env[8].value=ofbiz' \
+  --set-string 'env[9].name=JAVA_TOOL_OPTIONS' --set-string 'env[9].value=-XX:MaxRAMPercentage=75.0'
+
+TLS_ARGS_INVENTORY="$(tls_args inventory-svc)"
+# shellcheck disable=SC2086
+helm -n "${NS}" upgrade --install inventory-svc "${CHART}" \
+  --set image.repository=inventory-svc --set image.tag="${TAG}" \
+  --set replicaCount=1 --set autoscaling.enabled=false --set podDisruptionBudget.enabled=false \
+  ${TLS_ARGS_INVENTORY} \
+  --set-string 'env[0].name=SPRING_PROFILES_ACTIVE' --set-string 'env[0].value=prod' \
+  --set-string 'env[1].name=INVENTORY_DB_URL' --set-string "env[1].value=jdbc:postgresql://${POSTGRES}/inventory" \
+  --set-string 'env[2].name=INVENTORY_DB_USER' --set-string 'env[2].value=inventory' \
+  --set-string 'env[3].name=INVENTORY_DB_PASSWORD' --set-string 'env[3].value=inventory' \
+  --set-string "env[4].name=KAFKA_BOOTSTRAP_SERVERS" --set-string "env[4].value=${KAFKA}" \
+  --set-string 'env[5].name=JAVA_TOOL_OPTIONS' --set-string 'env[5].value=-XX:MaxRAMPercentage=75.0'
+
+for deploy in identity-svc gateway audit-svc notification-svc search-svc party-svc product-svc inventory-svc; do
   kubectl -n "${NS}" rollout status "deploy/${deploy}" --timeout=300s
 done
 
-echo "DONE — six services deployed (P1-F6-S2 + P2 party-svc)"
+echo "DONE — eight services deployed (P1-F6-S2 + P2 party-svc + P3 product/inventory-svc)"

@@ -55,6 +55,7 @@ class GatewayRoutingTest {
 
     private static final HttpServer DEMO = server("demo-ok");
     private static final HttpServer MONOLITH = server("monolith-ok");
+    private static final HttpServer PRODUCT = server("product-ok");
     private static final List<Map<String, List<String>>> DEMO_REQUESTS = new CopyOnWriteArrayList<>();
     private static final List<Map<String, List<String>>> MONOLITH_REQUESTS = new CopyOnWriteArrayList<>();
 
@@ -87,12 +88,14 @@ class GatewayRoutingTest {
     static void stopStubs() {
         DEMO.stop(0);
         MONOLITH.stop(0);
+        PRODUCT.stop(0);
     }
 
     @DynamicPropertySource
     static void properties(DynamicPropertyRegistry registry) {
         registry.add("gateway.demo.uri", () -> "http://127.0.0.1:" + DEMO.getAddress().getPort());
         registry.add("gateway.monolith.uri", () -> "http://127.0.0.1:" + MONOLITH.getAddress().getPort());
+        registry.add("gateway.product.uri", () -> "http://127.0.0.1:" + PRODUCT.getAddress().getPort());
         registry.add("spring.data.redis.host", REDIS::getHost);
         registry.add("spring.data.redis.port", () -> REDIS.getMappedPort(6379));
         registry.add("gateway.monolith.host-header", () -> "ofbiz-monolith.ofbiz.svc");
@@ -143,6 +146,22 @@ class GatewayRoutingTest {
     void unknownContextReturns404() throws Exception {
         assertEquals(404, get("/api/v1/unknown/thing",
             token("bob", Instant.now().plusSeconds(60)), Map.of()).statusCode());
+    }
+
+    /**
+     * P3-GATE write cutover: catalog paths route to product-svc behind the
+     * CUSTOMER role gate (same policy as parties).
+     */
+    @Test
+    void productRouteForwardsToProductSvcAndEnforcesRole() throws Exception {
+        HttpResponse<String> allowed = get("/api/v1/products",
+            token("erin", Instant.now().plusSeconds(60), "\"roles\":[\"CUSTOMER\"],"),
+            Map.of());
+        assertEquals(200, allowed.statusCode(), allowed.body());
+        assertEquals("product-ok", allowed.body());
+
+        assertEquals(403, get("/api/v1/products",
+            token("frank", Instant.now().plusSeconds(60)), Map.of()).statusCode());
     }
 
     @Test
@@ -249,8 +268,15 @@ class GatewayRoutingTest {
 
     /** Mints an HS256 JWT accepted by the test decoder. */
     static String token(String subject, Instant expiresAt) throws Exception {
+        return token(subject, expiresAt, "");
+    }
+
+    /** Same, with extra JSON claim fragment (e.g. roles). */
+    static String token(String subject, Instant expiresAt, String extraClaims)
+            throws Exception {
         String header = base64("{\"alg\":\"HS256\",\"typ\":\"JWT\"}");
         String payload = base64("{\"sub\":\"" + subject + "\",\"iss\":\"gateway-test\","
+            + extraClaims
             + "\"iat\":" + Instant.now().getEpochSecond() + ","
             + "\"exp\":" + expiresAt.getEpochSecond() + "}");
         String signingInput = header + "." + payload;

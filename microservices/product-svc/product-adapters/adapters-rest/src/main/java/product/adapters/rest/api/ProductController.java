@@ -45,6 +45,11 @@ public class ProductController {
             String currencyUomId, java.math.BigDecimal price, Instant resolvedAt) {
     }
 
+    /** Catalog browse page (P3-GATE SPA) — party-svc page shape. */
+    public record ProductPageResponse(List<ProductResponse> items, int page, int size,
+            long totalElements, int totalPages) {
+    }
+
     /**
      * Adapter-layer transaction boundary (ADR-009, spec-review fix): the
      * state change and its outbox row(s) commit — or roll back — together.
@@ -73,6 +78,16 @@ public class ProductController {
         }
         productService.upsert(product);
         return ResponseEntity.status(HttpStatus.CREATED).body(toResponse(product));
+    }
+
+    /** Catalog browse (P3-GATE SPA): one page of products, id-ordered. */
+    @GetMapping
+    ProductPageResponse list(@RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        long total = productService.count();
+        return new ProductPageResponse(
+            productService.list(page, size).stream().map(this::toResponse).toList(),
+            page, size, total, (int) ((total + size - 1) / Math.max(size, 1)));
     }
 
     /** AC (P3-F1-S2): applicable price at an instant; 404 when none applies. */

@@ -41,6 +41,14 @@ spring:
                 - Path=/api/v1/parties/**
               metadata:
                 required-role: CUSTOMER
+            # P3-GATE write cutover: catalog reads/writes go to product-svc
+            # (rollback = flip gateway.product.uri back to the monolith)
+            - id: product-svc
+              uri: ${gateway.product.uri:http://product-svc.ofbiz.svc:8080}
+              predicates:
+                - Path=/api/v1/products/**,/api/v1/categories/**,/api/v1/stores/**
+              metadata:
+                required-role: CUSTOMER
             - id: monolith
               uri: ${gateway.monolith.uri:https://ofbiz-monolith.ofbiz.svc:8443}
               predicates:

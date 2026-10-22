@@ -62,6 +62,16 @@ class CategoryServiceTest {
             public boolean anyInCategory(String categoryId) {
                 return "MEMBERED".equals(categoryId);
             }
+
+            @Override
+            public java.util.List<product.domain.Product> list(int page, int size) {
+                return java.util.List.of();
+            }
+
+            @Override
+            public long count() {
+                return 0;
+            }
         },
         (eventType, aggregateKey, payload) -> outboxEvents.add(eventType),
         category -> "{\"productCategoryId\":\"" + category.productCategoryId() + "\"}");

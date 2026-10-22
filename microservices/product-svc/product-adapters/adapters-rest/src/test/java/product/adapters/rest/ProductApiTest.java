@@ -124,6 +124,25 @@ class ProductApiTest {
     }
 
     @Test
+    void catalogBrowseListsProductsAsAPage() throws Exception {
+        postProduct("""
+            {"productId":"CATALOG-A","productTypeId":"FINISHED_GOOD",
+             "internalName":"Catalog A","productName":"A"}""");
+        postProduct("""
+            {"productId":"CATALOG-B","productTypeId":"FINISHED_GOOD",
+             "internalName":"Catalog B","productName":"B"}""");
+
+        HttpResponse<String> page = client.send(HttpRequest.newBuilder()
+            .uri(URI.create("http://localhost:" + port + "/api/v1/products?page=0&size=2"))
+            .GET().build(), HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, page.statusCode());
+        assertTrue(page.body().contains("CATALOG-A"));
+        assertTrue(page.body().contains("CATALOG-B"));
+        assertTrue(page.body().contains("\"totalElements\""));
+        assertTrue(page.body().contains("\"totalPages\""));
+    }
+
+    @Test
     void invalidProductIsRejected() throws Exception {
         assertEquals(400, postProduct(
             "{\"productId\":\" \",\"productTypeId\":\"X\",\"internalName\":\"n\"}")
