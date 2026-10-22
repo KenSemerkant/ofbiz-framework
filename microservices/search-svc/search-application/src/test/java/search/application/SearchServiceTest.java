@@ -38,6 +38,15 @@ class SearchServiceTest {
         public void recreate(String index) {
             recreated = index;
         }
+
+        @Override
+        public void delete(String index, String docId) {
+        }
+
+        @Override
+        public Map<String, String> get(String index, String docId) {
+            return Map.of();
+        }
     }
 
     @Test

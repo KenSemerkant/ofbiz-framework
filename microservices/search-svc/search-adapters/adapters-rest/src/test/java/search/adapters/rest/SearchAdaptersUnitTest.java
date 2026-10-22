@@ -113,4 +113,80 @@ class SearchAdaptersUnitTest {
                 }
             }));
     }
+
+    @Test
+    void deleteOfMissingDocIsTolerated() {
+        var error = new OpenSearchException(new ErrorResponse.Builder()
+            .status(404)
+            .error(new org.opensearch.client.opensearch._types.ErrorCause.Builder()
+                .type("resource_not_found_exception").build())
+            .build());
+        var index = new OpenSearchIndex(new OpenSearchClient(throwing(error)));
+        index.delete("products", "P1"); // must not throw — already gone is success
+    }
+
+    @Test
+    void deleteAndGetIoFailuresWrapAsIllegalState() {
+        var index = new OpenSearchIndex(new OpenSearchClient(throwing(new IOException("boom"))));
+        assertThrows(IllegalStateException.class, () -> index.delete("products", "P1"));
+        assertThrows(IllegalStateException.class, () -> index.get("products", "P1"));
+    }
+
+    @Test
+    void getOnMissingDocReturnsEmpty() {
+        var error = new OpenSearchException(new ErrorResponse.Builder()
+            .status(404)
+            .error(new org.opensearch.client.opensearch._types.ErrorCause.Builder()
+                .type("resource_not_found_exception").build())
+            .build());
+        var index = new OpenSearchIndex(new OpenSearchClient(throwing(error)));
+        assertTrue(index.get("products", "missing").isEmpty());
+    }
+
+    @Test
+    void getFlattensSourceToStringFields() {
+        com.fasterxml.jackson.databind.node.ObjectNode source =
+            com.fasterxml.jackson.databind.node.JsonNodeFactory.instance.objectNode();
+        source.put("productId", "P1");
+        source.put("defaultPrice", "1099.99");
+        var getResponse = org.opensearch.client.opensearch.core.GetResponse
+            .<com.fasterxml.jackson.databind.node.ObjectNode>of(g -> g
+                .index("products").id("P1").found(true).source(source));
+        var transport = new OpenSearchTransport() {
+            @Override
+            @SuppressWarnings("unchecked")
+            public <RequestT, ResponseT, ErrorT> ResponseT performRequest(
+                    RequestT request, Endpoint<RequestT, ResponseT, ErrorT> endpoint,
+                    TransportOptions options) {
+                return (ResponseT) getResponse;
+            }
+
+            @Override
+            @SuppressWarnings("unchecked")
+            public <RequestT, ResponseT, ErrorT> CompletableFuture<ResponseT> performRequestAsync(
+                    RequestT request, Endpoint<RequestT, ResponseT, ErrorT> endpoint,
+                    TransportOptions options) {
+                return CompletableFuture.completedFuture((ResponseT) getResponse);
+            }
+
+            @Override
+            public org.opensearch.client.json.JsonpMapper jsonpMapper() {
+                return null;
+            }
+
+            @Override
+            public TransportOptions options() {
+                return null;
+            }
+
+            @Override
+            public void close() {
+            }
+        };
+
+        Map<String, String> fields = new OpenSearchIndex(new OpenSearchClient(transport))
+            .get("products", "P1");
+
+        assertEquals(Map.of("productId", "P1", "defaultPrice", "1099.99"), fields);
+    }
 }

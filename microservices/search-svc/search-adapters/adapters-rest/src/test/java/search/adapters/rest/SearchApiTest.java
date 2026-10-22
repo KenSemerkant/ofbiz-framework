@@ -21,6 +21,7 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.KafkaContainer;
+import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import search.domain.SearchDocument;
@@ -43,6 +44,12 @@ class SearchApiTest {
 
     @Container
     static final KafkaContainer KAFKA = new KafkaContainer();
+
+    // consumer state since P3-F3-S1: processed_events + category projection
+    @Container
+    static final PostgreSQLContainer<?> POSTGRES =
+        new PostgreSQLContainer<>("postgres:16-alpine")
+            .withDatabaseName("search").withUsername("search").withPassword("search");
 
     // Testcontainers 2.x has no opensearch module — plain container, HTTP on 9200
     @Container
@@ -71,6 +78,9 @@ class SearchApiTest {
     @DynamicPropertySource
     static void properties(DynamicPropertyRegistry registry) throws Exception {
         registry.add("spring.kafka.bootstrap-servers", KAFKA::getBootstrapServers);
+        registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
+        registry.add("spring.datasource.username", POSTGRES::getUsername);
+        registry.add("spring.datasource.password", POSTGRES::getPassword);
         registry.add("search.opensearch.uris",
             () -> "http://" + OPENSEARCH.getHost() + ":" + OPENSEARCH.getMappedPort(9200));
         try (var socket = new java.net.ServerSocket(0)) {

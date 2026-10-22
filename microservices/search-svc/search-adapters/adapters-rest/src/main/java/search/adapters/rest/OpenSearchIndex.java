@@ -3,6 +3,7 @@ package search.adapters.rest;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.opensearch.client.opensearch.OpenSearchClient;
@@ -74,6 +75,43 @@ public class OpenSearchIndex implements SearchIndex {
             client.indices().create(request -> request.index(index));
         } catch (IOException e) {
             throw new IllegalStateException("create index failed for " + index, e);
+        }
+    }
+
+    @Override
+    public void delete(String index, String docId) {
+        try {
+            client.delete(request -> request.index(index).id(docId));
+        } catch (OpenSearchException e) {
+            if (e.response() != null && e.response().status() == 404) {
+                // already gone — the outcome delete aims at
+                return;
+            }
+            throw e;
+        } catch (IOException e) {
+            throw new IllegalStateException("delete call failed for " + docId, e);
+        }
+    }
+
+    @Override
+    public Map<String, String> get(String index, String docId) {
+        try {
+            var response = client.get(request -> request.index(index).id(docId), ObjectNode.class);
+            if (!response.found()) {
+                return Map.of();
+            }
+            Map<String, String> fields = new LinkedHashMap<>();
+            for (var entry : response.source().properties()) {
+                fields.put(entry.getKey(), entry.getValue().asText());
+            }
+            return fields;
+        } catch (OpenSearchException e) {
+            if (e.response() != null && e.response().status() == 404) {
+                return Map.of();
+            }
+            throw e;
+        } catch (IOException e) {
+            throw new IllegalStateException("get call failed for " + docId, e);
         }
     }
 }

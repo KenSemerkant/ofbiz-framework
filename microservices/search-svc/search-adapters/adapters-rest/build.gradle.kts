@@ -7,6 +7,11 @@ dependencies {
     implementation(project(":microservices:search-svc:search-domain"))
     implementation(project(":microservices:search-svc:search-adapters:adapters-grpc"))
     implementation("org.springframework.boot:spring-boot-starter-kafka")
+    // P3-F3-S1: processed_events + category-name projection (consumer state)
+    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+    implementation("org.springframework.boot:spring-boot-starter-flyway")
+    implementation("org.flywaydb:flyway-database-postgresql")
+    runtimeOnly("org.postgresql:postgresql")
     implementation("org.opensearch.client:opensearch-java:2.22.0")
     implementation("org.opensearch.client:opensearch-rest-client:2.11.1")
     // opensearch-java still speaks Jackson 2 (Boot 4 moved to Jackson 3)
@@ -14,7 +19,9 @@ dependencies {
     implementation(platform("io.grpc:grpc-bom:1.75.0"))
     implementation("io.grpc:grpc-netty-shaded")
 
+    testImplementation("org.springframework.boot:spring-boot-testcontainers")
     testImplementation("org.testcontainers:testcontainers-kafka")
+    testImplementation("org.testcontainers:testcontainers-postgresql")
     testImplementation("org.testcontainers:testcontainers-junit-jupiter")
     // adapters-grpc keeps gRPC deps as implementation — the test drives the
     // generated stubs directly, so it needs them on its own classpath
