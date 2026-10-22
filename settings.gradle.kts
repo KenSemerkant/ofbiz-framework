@@ -40,4 +40,7 @@ include(
     ":microservices:party-svc:party-application",
     ":microservices:party-svc:party-adapters:adapters-grpc",
     ":microservices:party-svc:party-adapters:adapters-rest",
+    ":microservices:product-svc:product-domain",
+    ":microservices:product-svc:product-application",
+    ":microservices:product-svc:product-adapters:adapters-rest",
 )
