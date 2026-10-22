@@ -3,6 +3,7 @@ package product.adapters.rest.config;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;
+import product.adapters.rest.persistence.JacksonCategorySerializer;
 import product.adapters.rest.persistence.JacksonProductSerializer;
 import product.application.CategoryService;
 import product.application.CategoryStore;
@@ -22,6 +23,11 @@ public class ProductBeans {
     }
 
     @Bean
+    product.application.CategorySerializer categorySerializer() {
+        return new JacksonCategorySerializer();
+    }
+
+    @Bean
     ProductService productService(ProductStore store, OutboxWriter outbox,
             ProductSerializer serializer,
             @org.springframework.beans.factory.annotation.Value(
@@ -31,8 +37,8 @@ public class ProductBeans {
 
     @Bean
     CategoryService categoryService(CategoryStore store, product.application.ProductStore products,
-            OutboxWriter outbox) {
-        return new CategoryService(store, products, outbox);
+            OutboxWriter outbox, product.application.CategorySerializer serializer) {
+        return new CategoryService(store, products, outbox, serializer);
     }
 
     @Bean

@@ -51,8 +51,7 @@ public class ProductService {
             return false;
         }
         store.delete(productId);
-        outbox.append(PRODUCT_DELETED, productId,
-            "{\"productId\":\"" + productId + "\"}");
+        outbox.append(PRODUCT_DELETED, productId, serializer.serializeDeleted(productId));
         return true;
     }
 
@@ -74,15 +73,18 @@ public class ProductService {
     private void emitPriceDeltas(Product before, Product after) {
         for (ProductPrice price : after.prices()) {
             if (before == null || !before.prices().contains(price)) {
-                outbox.append(PRICE_CHANGED, after.productId(), pricePayload(after, price));
+                outbox.append(PRICE_CHANGED, after.productId(),
+                    serializer.serializePriceChange(after.productId(), price, false));
             }
         }
-    }
-
-    private String pricePayload(Product product, ProductPrice price) {
-        return "{\"productId\":\"" + product.productId()
-            + "\",\"productPriceTypeId\":\"" + price.productPriceTypeId()
-            + "\",\"currencyUomId\":\"" + price.currencyUomId()
-            + "\",\"price\":" + price.price().toPlainString() + "}";
+        if (before != null) {
+            // rows dropped by the update are price changes too (quality review)
+            for (ProductPrice price : before.prices()) {
+                if (!after.prices().contains(price)) {
+                    outbox.append(PRICE_CHANGED, after.productId(),
+                        serializer.serializePriceChange(after.productId(), price, true));
+                }
+            }
+        }
     }
 }

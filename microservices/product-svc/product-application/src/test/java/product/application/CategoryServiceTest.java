@@ -63,7 +63,8 @@ class CategoryServiceTest {
                 return "MEMBERED".equals(categoryId);
             }
         },
-        (eventType, aggregateKey, payload) -> outboxEvents.add(eventType));
+        (eventType, aggregateKey, payload) -> outboxEvents.add(eventType),
+        category -> "{\"productCategoryId\":\"" + category.productCategoryId() + "\"}");
 
     @Test
     void upsertEmitsCategoryUpdated() {

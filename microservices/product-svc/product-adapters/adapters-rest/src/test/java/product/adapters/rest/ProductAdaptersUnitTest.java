@@ -18,6 +18,7 @@ import org.springframework.transaction.support.SimpleTransactionStatus;
 import org.springframework.transaction.support.TransactionTemplate;
 import product.adapters.rest.events.OutboxRelay;
 import product.adapters.rest.persistence.CategoryEntity;
+import product.adapters.rest.persistence.JacksonCategorySerializer;
 import product.adapters.rest.persistence.JacksonProductSerializer;
 import product.adapters.rest.persistence.OutboxEntryEntity;
 import product.adapters.rest.persistence.OutboxRepository;
@@ -116,6 +117,27 @@ class ProductAdaptersUnitTest {
         assertTrue(json.contains("\"productPriceTypeId\":\"DEFAULT_PRICE\""));
         assertTrue(json.contains("\"currencyUomId\":\"USD\""));
         assertTrue(json.contains("\"price\":10.00"));
+    }
+
+    @Test
+    void serializerPayloadsEscapeHostileFields() {
+        JacksonProductSerializer serializer = new JacksonProductSerializer();
+        tools.jackson.databind.ObjectMapper mapper = new tools.jackson.databind.ObjectMapper();
+        // every payload must parse and round-trip the hostile value
+        assertEquals("W\"Q\\T", mapper.readTree(serializer.serializeDeleted("W\"Q\\T"))
+            .path("productId").asText());
+        var priceChange = mapper.readTree(serializer.serializePriceChange("W\"Q\\T",
+            new product.domain.ProductPrice("TY\"PE", "US\\D",
+                Instant.parse("2026-01-01T00:00:00Z"), null, new java.math.BigDecimal("1.00")),
+            true));
+        assertEquals("TY\"PE", priceChange.path("productPriceTypeId").asText());
+        assertEquals("US\\D", priceChange.path("currencyUomId").asText());
+        assertTrue(priceChange.path("removed").asBoolean());
+
+        assertEquals("Sharp \"Tools\" \\ Best",
+            mapper.readTree(new JacksonCategorySerializer().serialize(
+                new product.domain.Category("CAT\"Q", null, "Sharp \"Tools\" \\ Best")))
+                .path("categoryName").asText());
     }
 
     @Test

@@ -40,6 +40,11 @@ public class JpaProductStore implements ProductStore {
 
     @Override
     public boolean anyInCategory(String categoryId) {
+        // Quality review probed LIKE-wildcard injection here: Spring Data
+        // already escapes % _ \ in derived Containing parameters, so an id
+        // like "WILD%" matches only itself (proven by
+        // ProductApiTest.membershipProbeDoesNotTreatWildcardsAsPatterns —
+        // pre-escaping ourselves double-escapes and breaks literal ids).
         return products.existsByCategoriesContaining("\"" + categoryId + "\"");
     }
 

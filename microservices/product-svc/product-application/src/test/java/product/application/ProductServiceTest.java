@@ -47,7 +47,23 @@ class ProductServiceTest {
             }
         },
         (eventType, aggregateKey, payload) -> outboxEvents.add(eventType),
-        product -> "{\"productId\":\"" + product.productId() + "\"}",
+        new ProductSerializer() {
+            @Override
+            public String serialize(product.domain.Product product) {
+                return "{\"productId\":\"" + product.productId() + "\"}";
+            }
+
+            @Override
+            public String serializeDeleted(String productId) {
+                return "{\"productId\":\"" + productId + "\"}";
+            }
+
+            @Override
+            public String serializePriceChange(String productId,
+                    product.domain.ProductPrice price, boolean removed) {
+                return "price-change:" + (removed ? "removed" : "active");
+            }
+        },
         "USD");
 
     private static ProductPrice usd(String amount, Instant from, Instant thru) {
@@ -81,6 +97,21 @@ class ProductServiceTest {
         Product updated = new Product("WIDGET", "FINISHED_GOOD", "Widget", null, null, null);
         updated.addPrice(usd("10.00", T0, null)); // unchanged row: no event
         updated.addPrice(usd("12.00", T1, null)); // new row: event
+        service.upsert(updated);
+        assertEquals(List.of(ProductService.PRODUCT_UPDATED, ProductService.PRICE_CHANGED),
+            outboxEvents);
+    }
+
+    @Test
+    void removedPriceRowsEmitPriceChanged() {
+        Product initial = new Product("WIDGET", "FINISHED_GOOD", "Widget", null, null, null);
+        initial.addPrice(usd("10.00", T0, null));
+        initial.addPrice(usd("12.00", T1, null));
+        service.upsert(initial);
+        outboxEvents.clear();
+
+        Product updated = new Product("WIDGET", "FINISHED_GOOD", "Widget", null, null, null);
+        updated.addPrice(usd("12.00", T1, null)); // usd10 row is removed by the update
         service.upsert(updated);
         assertEquals(List.of(ProductService.PRODUCT_UPDATED, ProductService.PRICE_CHANGED),
             outboxEvents);

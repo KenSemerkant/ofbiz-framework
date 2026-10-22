@@ -17,11 +17,14 @@ public class CategoryService {
     private final CategoryStore store;
     private final ProductStore products;
     private final OutboxWriter outbox;
+    private final CategorySerializer serializer;
 
-    public CategoryService(CategoryStore store, ProductStore products, OutboxWriter outbox) {
+    public CategoryService(CategoryStore store, ProductStore products, OutboxWriter outbox,
+            CategorySerializer serializer) {
         this.store = store;
         this.products = products;
         this.outbox = outbox;
+        this.serializer = serializer;
     }
 
     /** Outcome of a category delete attempt (spec-review fix). */
@@ -35,7 +38,8 @@ public class CategoryService {
 
     public void upsert(Category category) {
         store.save(category);
-        outbox.append(CATEGORY_UPDATED, category.productCategoryId(), payload(category));
+        outbox.append(CATEGORY_UPDATED, category.productCategoryId(),
+            serializer.serialize(category));
     }
 
     /** Category tree query (P3-F1-S1 AC); empty when the root is unknown. */
@@ -54,14 +58,5 @@ public class CategoryService {
         }
         store.delete(productCategoryId);
         return DeleteResult.DELETED;
-    }
-
-    private String payload(Category category) {
-        String parent = category.primaryParentCategoryId() == null
-            ? null
-            : "\"" + category.primaryParentCategoryId() + "\"";
-        return "{\"productCategoryId\":\"" + category.productCategoryId()
-            + "\",\"categoryName\":\"" + category.categoryName()
-            + "\",\"primaryParentCategoryId\":" + parent + "}";
     }
 }

@@ -73,8 +73,16 @@ public class CategoryController {
             .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    /** Delete (spec-review fix): only a leaf without member products. */
+    /**
+     * Delete (spec-review fix): only a leaf without member products. The tx
+     * spans the check and the delete.
+     */
+    // ponytail: @Transactional narrows but does not close the check-then-act
+    // race — an interleaved product upsert can re-add membership between the
+    // probe and the delete (inline JSON, no FK to enforce it); a members
+    // table with a real FK is the fix when normalization happens.
     @DeleteMapping("/{productCategoryId}")
+    @Transactional
     ResponseEntity<?> delete(@PathVariable String productCategoryId) {
         return switch (categoryService.delete(productCategoryId)) {
             case DELETED -> ResponseEntity.noContent().build();
