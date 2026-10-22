@@ -89,6 +89,25 @@ class PartyApiTest {
         assertEquals(404, get("unknown").statusCode());
     }
 
+    @Test
+    void groupPartyRoundtripsAndListsByRole() throws Exception {
+        assertEquals(201, post("""
+            {"partyId":"G9","kind":"PARTY_GROUP","groupName":"Acme Corp",
+             "roles":["SUPPLIER"]}""").statusCode());
+        HttpResponse<String> fetched = get("G9");
+        assertEquals(200, fetched.statusCode());
+        assertTrue(fetched.body().contains("Acme Corp"));
+
+        HttpResponse<String> byRole = client.send(HttpRequest.newBuilder()
+            .uri(URI.create("http://localhost:" + port + "/api/v1/parties?role=SUPPLIER&page=0&size=5"))
+            .GET().build(), HttpResponse.BodyHandlers.ofString());
+        assertTrue(byRole.body().contains("Acme Corp"));
+
+        assertEquals(400, client.send(HttpRequest.newBuilder()
+            .uri(URI.create("http://localhost:" + port + "/api/v1/parties?role=X&size=0"))
+            .GET().build(), HttpResponse.BodyHandlers.ofString()).statusCode());
+    }
+
     /** P2-F1-S2 contract: link/unlink contact mechs with purpose validation. */
     @Test
     void contactMechLinkRoundtripAndPurposeValidation() throws Exception {        HttpResponse<String> linked = post("""

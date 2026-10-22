@@ -69,8 +69,11 @@ class MonolithProjectionConsumerTest {
         after.forEach((k, v) -> fields.append('"').append(k).append("\":")
             .append(v == null ? "null" : "\"" + v + "\"").append(','));
         fields.setLength(fields.length() - 1);
-        return "{\"op\":\"" + op + "\",\"before\":null,\"after\":{" + fields
-            + "},\"source\":{\"table\":\"" + table + "\"}}";
+        String row = "{" + fields + "}";
+        String beforeJson = op.equals("d") ? row : "null";
+        String afterJson = op.equals("d") ? "null" : row;
+        return "{\"op\":\"" + op + "\",\"before\":" + beforeJson + ",\"after\":" + afterJson
+            + ",\"source\":{\"table\":\"" + table + "\"}}";
     }
 
     private void produce(String topic, String payload) {
@@ -116,5 +119,28 @@ class MonolithProjectionConsumerTest {
             assertTrue(party.getRoles().contains("CUSTOMER"));
         });
         assertEquals(1, projections.count());
+    }
+
+    @Test
+    void groupUpsertPartyDeleteAndUnknownTableAreHandled() {
+        produce("ofbiz.PARTY", envelope("PARTY", "c",
+            Map.of("PARTY_ID", "G1", "PARTY_TYPE_ID", "PARTY_GROUP")));
+        produce("ofbiz.PARTY_GROUP", envelope("PARTY_GROUP", "c",
+            Map.of("PARTY_ID", "G1", "GROUP_NAME", "Acme")));
+        produce("ofbiz.AGREEMENT", envelope("AGREEMENT", "c", Map.of("X", "1")));
+        await().atMost(30, TimeUnit.SECONDS).untilAsserted(() ->
+            assertEquals("Acme", projections.findById("G1").orElseThrow().getGroupName()));
+
+        // person row arriving before its party creates the stub, converges later
+        produce("ofbiz.PERSON", envelope("PERSON", "c",
+            Map.of("PARTY_ID", "PX", "FIRST_NAME", "Orphan", "LAST_NAME", "Row")));
+        await().atMost(30, TimeUnit.SECONDS).untilAsserted(() ->
+            assertEquals("Orphan", projections.findById("PX").orElseThrow().getFirstName()));
+
+        // PARTY delete removes the projection row (roles cascade)
+        produce("ofbiz.PARTY", envelope("PARTY", "d",
+            Map.of("PARTY_ID", "PX", "PARTY_TYPE_ID", "PERSON")));
+        await().atMost(30, TimeUnit.SECONDS).untilAsserted(() ->
+            assertTrue(projections.findById("PX").isEmpty()));
     }
 }

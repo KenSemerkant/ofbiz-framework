@@ -29,7 +29,7 @@ public class MonolithSyncConfig {
      */
     @Bean
     @org.springframework.context.annotation.Primary
-    DataSource partyDataSource(
+    public DataSource partyDataSource(
             @Value("${spring.datasource.url}") String url,
             @Value("${spring.datasource.username}") String username,
             @Value("${spring.datasource.password}") String password) {
@@ -47,19 +47,19 @@ public class MonolithSyncConfig {
     }
 
     @Bean(name = "monolithJdbc")
-    JdbcTemplate monolithJdbc(
+    public JdbcTemplate monolithJdbc(
             @Qualifier("monolithDataSource") DataSource dataSource) {
         return new JdbcTemplate(dataSource);
     }
 
     @Bean
-    MonolithSyncWriter monolithSyncWriter(
+    public MonolithSyncWriter monolithSyncWriter(
             @Qualifier("monolithJdbc") JdbcTemplate monolith) {
         return new JdbcMonolithSyncWriter(monolith);
     }
 
     @Bean
-    ReverseSyncService reverseSyncService(MonolithSyncWriter writer) {
+    public ReverseSyncService reverseSyncService(MonolithSyncWriter writer) {
         return new ReverseSyncService(writer);
     }
 }

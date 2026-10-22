@@ -51,7 +51,9 @@ class PartyGrpcServiceTest {
                 @Override
                 public party.application.PartyPage findByRole(String roleTypeId, int page,
                         int size) {
-                    return new party.application.PartyPage(java.util.List.of(), page, size, 0);
+                    var items = java.util.List.of(new party.application.PartyPage.PartySummary(
+                        "P1", "PERSON", "Ada Lovelace"));
+                    return new party.application.PartyPage(items, page, size, 1);
                 }
             },
             (eventType, aggregateKey, payload) -> outboxEvents.add(eventType),
@@ -97,6 +99,29 @@ class PartyGrpcServiceTest {
         StatusRuntimeException e = assertThrows(StatusRuntimeException.class,
             () -> stub.getParty(GetPartyRequest.newBuilder().setPartyId("nope").build()));
         assertEquals(io.grpc.Status.Code.NOT_FOUND, e.getStatus().getCode());
+    }
+
+    @Test
+    void findPartiesByRoleReturnsEnvelope() {
+        var response = stub.findPartiesByRole(
+            party.v1.PartyOuterClass.FindPartiesByRoleRequest.newBuilder()
+                .setRole("CUSTOMER").setPage(0).setSize(20).build());
+        assertEquals(1, response.getItemsCount());
+        assertEquals("Ada Lovelace", response.getItems(0).getDisplayName());
+        assertEquals(1, response.getTotalElements());
+        assertEquals(1, response.getTotalPages());
+        assertEquals(0, response.getPage());
+        assertEquals(20, response.getSize());
+    }
+
+    @Test
+    void blankRoleIsInvalidArgument() {
+        StatusRuntimeException e = assertThrows(StatusRuntimeException.class,
+            () -> stub.upsertParty(UpsertPartyRequest.newBuilder()
+                .setPartyId("P1").setKind("PERSON")
+                .setFirstName("A").setLastName("B")
+                .addRoles(" ").build()));
+        assertEquals(io.grpc.Status.Code.INVALID_ARGUMENT, e.getStatus().getCode());
     }
 
     @Test

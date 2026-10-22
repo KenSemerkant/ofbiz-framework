@@ -1,5 +1,5 @@
 // ofbiz-msa.domain — pure domain module.
-// AGENTS.md: unit coverage on domain modules must stay above 90%.
+// AGENTS.md: unit coverage on domain modules must stay above 95%.
 // The bundle-level line counter is deliberate: individual record accessors
 // are too small to be a meaningful per-class gate.
 plugins {
@@ -28,7 +28,7 @@ tasks.jacocoTestCoverageVerification {
             limit {
                 counter = "LINE"
                 value = "COVEREDRATIO"
-                minimum = "0.90".toBigDecimal()
+                minimum = "0.95".toBigDecimal()
             }
         }
     }

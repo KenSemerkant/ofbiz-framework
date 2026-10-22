@@ -75,6 +75,14 @@ class PartyTest {
     }
 
     @Test
+    void nullRolesAndRelationshipsCollectionsAreTolerated() {
+        Party party = new Party("P9", PartyKind.PERSON,
+            new Person("A", "B"), null, null, null);
+        assertTrue(party.roles().isEmpty());
+        assertTrue(party.relationships().isEmpty());
+    }
+
+    @Test
     void returnedCollectionsAreDefensiveCopies() {
         Party party = Party.person("P1", new Person("A", "B"));
         party.grantRole("CUSTOMER");

@@ -4,6 +4,7 @@
 // application.yaml (FUTURESTATE-LOWLEVEL §1).
 plugins {
     java
+    jacoco
     id("org.springframework.boot")
     id("io.spring.dependency-management")
 }
@@ -49,6 +50,40 @@ configure<io.spring.gradle.dependencymanagement.dsl.DependencyManagementExtensio
 
 tasks.withType<Test>().configureEach {
     useJUnitPlatform()
+    finalizedBy(tasks.jacocoTestReport)
+}
+
+tasks.jacocoTestReport {
+    reports { xml.required = true }
+    // match the gate: Application mains are not product code under test
+    classDirectories.setFrom(files(
+        sourceSets.main.get().output.asFileTree.matching {
+            exclude("**/*Application*")
+        }
+    ))
+}
+
+tasks.jacocoTestCoverageVerification {
+    dependsOn(tasks.test)
+    classDirectories.setFrom(files(
+        sourceSets.main.get().output.asFileTree.matching {
+            exclude("**/*Application*")
+        }
+    ))
+    violationRules {
+        rule {
+            element = "BUNDLE"
+            limit {
+                counter = "LINE"
+                value = "COVEREDRATIO"
+                minimum = "0.95".toBigDecimal()
+            }
+        }
+    }
+}
+
+tasks.check {
+    dependsOn(tasks.jacocoTestCoverageVerification)
 }
 
 // Security overrides that the Boot 4.0.6 BOM does not carry yet (trivy gate).
