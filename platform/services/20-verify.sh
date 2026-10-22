@@ -81,7 +81,12 @@ check "no token -> gateway 401" 401 "$(echo "${E2E}" | head -1 | cut -d" " -f2 |
 echo "==> 5. Search e2e: event (mTLS producer) -> gateway query"
 # ship the search-svc KafkaUser PEM into the broker pod for an authenticated produce
 TMP=$(mktemp -d)
-kubectl -n "${NS}" get secret search-svc -o 'jsonpath={.data.ca\.crt}' | base64 -d > "${TMP}/ca.crt"
+# truststore carries BOTH CAs (same as 10-deploy's kafka_pem_secret):
+# brokers serve cluster-CA certs while KafkaUser secrets ship the clients
+# CA — one file validates either chain. With only the clients CA the
+# handshake fails PKIX once the broker serves a rotated cluster-CA cert.
+kubectl -n "${NS}" get secret ofbiz-cluster-ca-cert -o 'jsonpath={.data.ca\.crt}' | base64 -d > "${TMP}/ca.crt"
+kubectl -n "${NS}" get secret search-svc -o 'jsonpath={.data.ca\.crt}' | base64 -d >> "${TMP}/ca.crt"
 kubectl -n "${NS}" get secret search-svc -o 'jsonpath={.data.user\.key}' | base64 -d > "${TMP}/user.key"
 kubectl -n "${NS}" get secret search-svc -o 'jsonpath={.data.user\.crt}' | base64 -d > "${TMP}/user.crt"
 cat "${TMP}/user.key" "${TMP}/user.crt" > "${TMP}/user.pem"
