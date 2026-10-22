@@ -114,5 +114,61 @@ class InventoryItemTest {
         assertEquals(0, item.availableToPromiseTotal().signum());
         assertEquals(null, item.serialNumber());
         assertEquals(null, item.unitCost());
+        assertEquals("II1", item.inventoryItemId());
+        assertEquals("WIDGET", item.productId());
+        assertEquals("WH1", item.facilityId());
+    }
+
+    @Test
+    void reserveDrawsDownAtpOnly() {
+        InventoryItem item = item();
+        item.receive(TEN);
+        item.reserve(new BigDecimal("4"));
+        assertEquals(0, item.quantityOnHandTotal().compareTo(TEN));
+        assertEquals(0, item.availableToPromiseTotal().compareTo(new BigDecimal("6")));
+        assertThrows(InsufficientStockException.class,
+            () -> item.reserve(new BigDecimal("7")));
+        // malformed reserve attempts leave the totals untouched
+        assertThrows(IllegalArgumentException.class, () -> item.reserve(BigDecimal.ZERO));
+        assertThrows(IllegalArgumentException.class, () -> item.reserve(null));
+        assertEquals(0, item.availableToPromiseTotal().compareTo(new BigDecimal("6")));
+    }
+
+    @Test
+    void canReserveReflectsAtpOnly() {
+        InventoryItem item = item();
+        item.receive(TEN);
+        assertEquals(true, item.canReserve(TEN));
+        assertEquals(false, item.canReserve(new BigDecimal("11")));
+        assertEquals(false, item.canReserve(BigDecimal.ZERO));
+        assertEquals(false, item.canReserve(null));
+        item.reserve(TEN);
+        assertEquals(false, item.canReserve(BigDecimal.ONE));
+    }
+
+    @Test
+    void confirmDrawsDownQohOnly() {
+        InventoryItem item = item();
+        item.receive(TEN);
+        item.reserve(new BigDecimal("4"));
+        item.confirmReservation(new BigDecimal("4"));
+        assertEquals(0, item.quantityOnHandTotal().compareTo(new BigDecimal("6")));
+        assertEquals(0, item.availableToPromiseTotal().compareTo(new BigDecimal("6")));
+        assertThrows(InsufficientStockException.class,
+            () -> item.confirmReservation(new BigDecimal("7")));
+        assertThrows(IllegalArgumentException.class,
+            () -> item.confirmReservation(null));
+    }
+
+    @Test
+    void releaseRestoresAtp() {
+        InventoryItem item = item();
+        item.receive(TEN);
+        item.reserve(new BigDecimal("4"));
+        item.release(new BigDecimal("4"));
+        assertEquals(0, item.quantityOnHandTotal().compareTo(TEN));
+        assertEquals(0, item.availableToPromiseTotal().compareTo(TEN));
+        assertThrows(IllegalArgumentException.class,
+            () -> item.release(new BigDecimal("-1")));
     }
 }

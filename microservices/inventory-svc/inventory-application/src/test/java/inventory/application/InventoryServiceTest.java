@@ -103,6 +103,15 @@ class InventoryServiceTest {
         }
 
         @Override
+        public List<InventoryItem> findByProductIdAndFacilityId(String productId,
+                String facilityId) {
+            return storeData.values().stream()
+                .filter(i -> i.productId().equals(productId)
+                    && i.facilityId().equals(facilityId))
+                .toList();
+        }
+
+        @Override
         public void save(InventoryItem item) {
             storeData.put(item.inventoryItemId(), item);
         }
@@ -127,6 +136,12 @@ class InventoryServiceTest {
 
         @Override
         public String serializeStockChange(InventoryItem item, BigDecimal quantity) {
+            return "{}";
+        }
+
+        @Override
+        public String serializeReservation(inventory.domain.Reservation reservation,
+                inventory.domain.InventoryItem item) {
             return "{}";
         }
 

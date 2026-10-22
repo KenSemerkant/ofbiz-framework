@@ -100,6 +100,38 @@ public final class InventoryItem {
         target.availableToPromiseTotal = target.availableToPromiseTotal.add(quantity);
     }
 
+    /** Reserve against ATP (P3-F2-S2): goods stay until confirm ships them. */
+    public boolean canReserve(BigDecimal quantity) {
+        return quantity != null && quantity.signum() > 0
+            && availableToPromiseTotal.compareTo(quantity) >= 0;
+    }
+
+    /** Draws down ATP only — QOH waits for confirm (goods still present). */
+    public void reserve(BigDecimal quantity) {
+        requirePositive(quantity);
+        if (availableToPromiseTotal.compareTo(quantity) < 0) {
+            throw new InsufficientStockException("insufficient available to promise ("
+                + availableToPromiseTotal + " < " + quantity + ")");
+        }
+        availableToPromiseTotal = availableToPromiseTotal.subtract(quantity);
+    }
+
+    /** Goods leave (P3-F2-S2 confirm): QOH drops; ATP already dropped at reserve. */
+    public void confirmReservation(BigDecimal quantity) {
+        requirePositive(quantity);
+        if (quantityOnHandTotal.compareTo(quantity) < 0) {
+            throw new InsufficientStockException("insufficient quantity on hand ("
+                + quantityOnHandTotal + " < " + quantity + ")");
+        }
+        quantityOnHandTotal = quantityOnHandTotal.subtract(quantity);
+    }
+
+    /** Compensation (P3-F2-S2 cancel): the ATP goes back. */
+    public void release(BigDecimal quantity) {
+        requirePositive(quantity);
+        availableToPromiseTotal = availableToPromiseTotal.add(quantity);
+    }
+
     private static void requirePositive(BigDecimal quantity) {
         if (quantity == null || quantity.signum() <= 0) {
             throw new IllegalArgumentException("quantity must be positive");

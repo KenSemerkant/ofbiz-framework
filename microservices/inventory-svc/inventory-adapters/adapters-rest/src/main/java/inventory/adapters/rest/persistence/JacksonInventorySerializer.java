@@ -5,6 +5,7 @@ import java.util.LinkedHashMap;
 import inventory.application.InventorySerializer;
 import inventory.domain.Facility;
 import inventory.domain.InventoryItem;
+import inventory.domain.Reservation;
 
 /**
  * Event payload shapes consumed by order-svc and future fulfillment readers.
@@ -50,6 +51,21 @@ public class JacksonInventorySerializer implements InventorySerializer {
         fields.put("from", itemFields(from));
         fields.put("to", itemFields(to));
         fields.put("quantity", quantity);
+        return mapper.writeValueAsString(fields);
+    }
+
+    @Override
+    public String serializeReservation(Reservation reservation, InventoryItem item) {
+        var fields = new LinkedHashMap<String, Object>();
+        fields.put("reservationId", reservation.reservationId());
+        fields.put("orderId", reservation.orderId());
+        fields.put("orderItemSeqId", reservation.orderItemSeqId());
+        fields.put("productId", reservation.productId());
+        fields.put("facilityId", reservation.facilityId());
+        fields.put("inventoryItemId", reservation.inventoryItemId());
+        fields.put("quantity", reservation.quantity());
+        fields.put("status", reservation.status().name());
+        fields.put("item", itemFields(item));
         return mapper.writeValueAsString(fields);
     }
 

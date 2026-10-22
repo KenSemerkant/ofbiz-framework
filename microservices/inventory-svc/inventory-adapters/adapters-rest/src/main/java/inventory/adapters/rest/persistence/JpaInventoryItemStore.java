@@ -1,5 +1,6 @@
 package inventory.adapters.rest.persistence;
 
+import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Repository;
 import inventory.application.InventoryItemStore;
@@ -23,6 +24,12 @@ public class JpaInventoryItemStore implements InventoryItemStore {
     @Override
     public Optional<InventoryItem> find(String inventoryItemId) {
         return items.findById(inventoryItemId).map(InventoryItemEntity::toDomain);
+    }
+
+    @Override
+    public List<InventoryItem> findByProductIdAndFacilityId(String productId, String facilityId) {
+        return items.findByProductIdAndFacilityIdOrderByInventoryItemIdAsc(productId, facilityId)
+            .stream().map(InventoryItemEntity::toDomain).toList();
     }
 
     @Override

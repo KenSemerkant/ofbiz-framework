@@ -9,6 +9,11 @@ spring:
     virtual:
       enabled: true
   jpa:
+    # OSIV keeps the request-scoped persistence context (with rollback
+    # residual state) alive across the optimistic-lock retry attempts of one
+    # request, so retried transactions would read a stale snapshot
+    # (P3-F2-S2). No lazy associations exist in this service — off is safe.
+    open-in-view: false
     hibernate:
       ddl-auto: validate
   flyway:

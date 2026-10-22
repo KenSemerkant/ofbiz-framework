@@ -10,6 +10,8 @@ import inventory.application.InventorySerializer;
 import inventory.application.InventoryService;
 import inventory.application.InventoryItemStore;
 import inventory.application.OutboxWriter;
+import inventory.application.ReservationService;
+import inventory.application.ReservationStore;
 
 /** Wires the application-layer use cases into the adapter layer. */
 @Configuration
@@ -31,5 +33,11 @@ public class InventoryBeans {
     InventoryService inventoryService(InventoryItemStore items, OutboxWriter outbox,
             InventorySerializer serializer) {
         return new InventoryService(items, outbox, serializer);
+    }
+
+    @Bean
+    ReservationService reservationService(InventoryItemStore items,
+            ReservationStore reservations, OutboxWriter outbox, InventorySerializer serializer) {
+        return new ReservationService(items, reservations, outbox, serializer);
     }
 }

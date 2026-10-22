@@ -2,6 +2,7 @@ package inventory.application;
 
 import inventory.domain.Facility;
 import inventory.domain.InventoryItem;
+import inventory.domain.Reservation;
 import java.math.BigDecimal;
 
 /**
@@ -21,4 +22,7 @@ public interface InventorySerializer {
     String serializeStockChange(InventoryItem item, BigDecimal quantity);
 
     String serializeTransfer(InventoryItem from, InventoryItem to, BigDecimal quantity);
+
+    /** Reservation lifecycle events: the reservation plus its item snapshot. */
+    String serializeReservation(Reservation reservation, InventoryItem item);
 }

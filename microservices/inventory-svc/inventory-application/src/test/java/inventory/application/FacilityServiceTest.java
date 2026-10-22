@@ -85,6 +85,12 @@ class FacilityServiceTest {
         }
 
         @Override
+        public String serializeReservation(inventory.domain.Reservation reservation,
+                inventory.domain.InventoryItem item) {
+            return "{}";
+        }
+
+        @Override
         public String serializeTransfer(inventory.domain.InventoryItem from,
                 inventory.domain.InventoryItem to, java.math.BigDecimal quantity) {
             return "{}";

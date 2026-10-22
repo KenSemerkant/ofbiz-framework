@@ -26,6 +26,8 @@ import inventory.adapters.rest.persistence.OutboxEntryEntity;
 import inventory.adapters.rest.persistence.OutboxRepository;
 import inventory.domain.Facility;
 import inventory.domain.InventoryItem;
+import inventory.domain.Reservation;
+import inventory.adapters.rest.persistence.ReservationEntity;
 
 /**
  * Unit coverage for adapter paths the container tests don't reach: the outbox
@@ -141,6 +143,52 @@ class InventoryAdaptersUnitTest {
         assertEquals("Sharp \"Name\" \\ Best",
             mapper.readTree(serializer.serializeFacility(new Facility("WH1",
                 "Sharp \"Name\" \\ Best", null))).path("facilityName").asText());
+    }
+
+    @Test
+    void reservationSerializerPayloadShape() {
+        JacksonInventorySerializer serializer = new JacksonInventorySerializer();
+        InventoryItem item = new InventoryItem("II1", "WIDGET", "WH1", null, null);
+        item.receive(new BigDecimal("10"));
+        Reservation reservation = new Reservation("RES-1", "ORD-1", "00001", "WIDGET", "WH1",
+            "II1", new BigDecimal("4"));
+        item.reserve(new BigDecimal("4"));
+
+        tools.jackson.databind.ObjectMapper mapper = new tools.jackson.databind.ObjectMapper();
+        var payload = mapper.readTree(serializer.serializeReservation(reservation, item));
+        assertEquals("RES-1", payload.path("reservationId").asText());
+        assertEquals("ORD-1", payload.path("orderId").asText());
+        assertEquals("00001", payload.path("orderItemSeqId").asText());
+        assertEquals("II1", payload.path("inventoryItemId").asText());
+        assertEquals(0, payload.path("quantity").decimalValue()
+            .compareTo(new BigDecimal("4")));
+        assertEquals("CREATED", payload.path("status").asText());
+        assertEquals("II1", payload.path("item").path("inventoryItemId").asText());
+        assertEquals(0, payload.path("item").path("availableToPromiseTotal").decimalValue()
+            .compareTo(new BigDecimal("6")));
+    }
+
+    @Test
+    void reservationEntityAccessorsAndRoundtrip() {
+        ReservationEntity entity = new ReservationEntity("RES-1");
+        entity.applyFrom(new Reservation("RES-1", "ORD-1", "00001", "WIDGET", "WH1", "II1",
+            new BigDecimal("4")));
+        assertEquals("RES-1", entity.getReservationId());
+        assertEquals("ORD-1", entity.getOrderId());
+        assertEquals("00001", entity.getOrderItemSeqId());
+        assertEquals("WIDGET", entity.getProductId());
+        assertEquals("WH1", entity.getFacilityId());
+        assertEquals("II1", entity.getInventoryItemId());
+        assertEquals(0, entity.getQuantity().compareTo(new BigDecimal("4")));
+        assertEquals("CREATED", entity.getStatus());
+        assertTrue(entity.getUpdatedAt() != null);
+
+        Reservation domain = entity.toDomain();
+        assertEquals("RES-1", domain.reservationId());
+        assertEquals(Reservation.Status.CREATED, domain.status());
+        assertEquals(0, domain.quantity().compareTo(new BigDecimal("4")));
+
+        assertTrue(new ReservationEntity().getReservationId() == null);
     }
 
     @Test
