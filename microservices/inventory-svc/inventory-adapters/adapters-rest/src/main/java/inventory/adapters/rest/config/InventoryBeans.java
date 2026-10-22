@@ -12,6 +12,8 @@ import inventory.application.InventoryItemStore;
 import inventory.application.OutboxWriter;
 import inventory.application.ReservationService;
 import inventory.application.ReservationStore;
+import inventory.application.ShipmentService;
+import inventory.application.ShipmentStore;
 
 /** Wires the application-layer use cases into the adapter layer. */
 @Configuration
@@ -39,5 +41,11 @@ public class InventoryBeans {
     ReservationService reservationService(InventoryItemStore items,
             ReservationStore reservations, OutboxWriter outbox, InventorySerializer serializer) {
         return new ReservationService(items, reservations, outbox, serializer);
+    }
+
+    @Bean
+    ShipmentService shipmentService(ShipmentStore shipments, ReservationService reservations,
+            OutboxWriter outbox, InventorySerializer serializer) {
+        return new ShipmentService(shipments, reservations, outbox, serializer);
     }
 }

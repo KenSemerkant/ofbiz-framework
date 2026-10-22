@@ -84,6 +84,20 @@ public class ReservationService {
         return reservation;
     }
 
+    /**
+     * Confirms every live reservation of an order (P3-F2-S3 ship-order flow):
+     * the goods leave QOH and each confirmation emits its event. Called inside
+     * the shipping transaction.
+     */
+    public List<Reservation> confirmOrderReservations(String orderId) {
+        List<Reservation> live = reservations.findByOrderIdAndStatus(orderId,
+            Reservation.Status.CREATED);
+        for (Reservation reservation : live) {
+            confirm(reservation.reservationId());
+        }
+        return live;
+    }
+
     public java.util.Optional<Reservation> get(String reservationId) {
         return reservations.find(reservationId);
     }

@@ -1,5 +1,6 @@
 package inventory.adapters.rest.persistence;
 
+import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Repository;
 import inventory.application.ReservationStore;
@@ -18,6 +19,12 @@ public class JpaReservationStore implements ReservationStore {
     @Override
     public Optional<Reservation> find(String reservationId) {
         return reservations.findById(reservationId).map(ReservationEntity::toDomain);
+    }
+
+    @Override
+    public List<Reservation> findByOrderIdAndStatus(String orderId, Reservation.Status status) {
+        return reservations.findByOrderIdAndStatus(orderId, status.name()).stream()
+            .map(ReservationEntity::toDomain).toList();
     }
 
     @Override

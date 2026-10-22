@@ -149,6 +149,14 @@ class ReservationServiceTest {
         }
 
         @Override
+        public List<Reservation> findByOrderIdAndStatus(String orderId,
+                Reservation.Status status) {
+            return reservationData.values().stream()
+                .filter(r -> r.orderId().equals(orderId) && r.status() == status)
+                .toList();
+        }
+
+        @Override
         public void save(Reservation reservation) {
             reservationData.put(reservation.reservationId(), reservation);
         }
@@ -179,6 +187,11 @@ class ReservationServiceTest {
         @Override
         public String serializeTransfer(InventoryItem from, InventoryItem to,
                 BigDecimal quantity) {
+            return "{}";
+        }
+
+        @Override
+        public String serializeShipment(inventory.domain.Shipment shipment) {
             return "{}";
         }
 

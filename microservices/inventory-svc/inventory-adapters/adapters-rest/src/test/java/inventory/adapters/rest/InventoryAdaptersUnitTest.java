@@ -27,7 +27,11 @@ import inventory.adapters.rest.persistence.OutboxRepository;
 import inventory.domain.Facility;
 import inventory.domain.InventoryItem;
 import inventory.domain.Reservation;
+import inventory.domain.Shipment;
+import inventory.domain.ShipmentItem;
 import inventory.adapters.rest.persistence.ReservationEntity;
+import inventory.adapters.rest.persistence.ShipmentEntity;
+import inventory.adapters.rest.persistence.ShipmentJson;
 
 /**
  * Unit coverage for adapter paths the container tests don't reach: the outbox
@@ -189,6 +193,45 @@ class InventoryAdaptersUnitTest {
         assertEquals(0, domain.quantity().compareTo(new BigDecimal("4")));
 
         assertTrue(new ReservationEntity().getReservationId() == null);
+    }
+
+    @Test
+    void shipmentSerializerPayloadShapeAndRoundtrip() {
+        JacksonInventorySerializer serializer = new JacksonInventorySerializer();
+        Shipment shipment = new Shipment("SH-1", "ORD-1");
+        shipment.addShipmentItem("WIDGET", new BigDecimal("4"), "II1");
+        shipment.pack();
+
+        tools.jackson.databind.ObjectMapper mapper = new tools.jackson.databind.ObjectMapper();
+        var payload = mapper.readTree(serializer.serializeShipment(shipment));
+        assertEquals("SH-1", payload.path("shipmentId").asText());
+        assertEquals("ORD-1", payload.path("orderId").asText());
+        assertEquals("PACKED", payload.path("status").asText());
+        assertEquals("II1", payload.path("items").get(0).path("inventoryItemId").asText());
+
+        // inline items column roundtrip
+        List<ShipmentItem> items = List.of(
+            new ShipmentItem("00001", "WIDGET", new BigDecimal("4"), "II1"));
+        assertEquals(items, ShipmentJson.deserializeItems(ShipmentJson.serializeItems(items)));
+    }
+
+    @Test
+    void shipmentEntityAccessorsAndRoundtrip() {
+        ShipmentEntity entity = new ShipmentEntity("SH-1");
+        Shipment shipment = new Shipment("SH-1", "ORD-1");
+        shipment.addShipmentItem("WIDGET", new BigDecimal("4"), "II1");
+        shipment.pack();
+        entity.applyFrom(shipment);
+        assertEquals("SH-1", entity.getShipmentId());
+        assertEquals("ORD-1", entity.getOrderId());
+        assertEquals("PACKED", entity.getStatus());
+        assertTrue(entity.getItems().contains("WIDGET"));
+        assertTrue(entity.getUpdatedAt() != null);
+
+        Shipment domain = entity.toDomain();
+        assertEquals(Shipment.Status.PACKED, domain.status());
+        assertEquals(1, domain.items().size());
+        assertTrue(new ShipmentEntity().getShipmentId() == null);
     }
 
     @Test

@@ -140,6 +140,11 @@ class InventoryServiceTest {
         }
 
         @Override
+        public String serializeShipment(inventory.domain.Shipment shipment) {
+            return "{}";
+        }
+
+        @Override
         public String serializeReservation(inventory.domain.Reservation reservation,
                 inventory.domain.InventoryItem item) {
             return "{}";

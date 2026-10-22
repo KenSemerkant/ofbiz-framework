@@ -3,6 +3,7 @@ package inventory.application;
 import inventory.domain.Facility;
 import inventory.domain.InventoryItem;
 import inventory.domain.Reservation;
+import inventory.domain.Shipment;
 import java.math.BigDecimal;
 
 /**
@@ -25,4 +26,7 @@ public interface InventorySerializer {
 
     /** Reservation lifecycle events: the reservation plus its item snapshot. */
     String serializeReservation(Reservation reservation, InventoryItem item);
+
+    /** Shipment lifecycle events: status plus the packed item lines. */
+    String serializeShipment(Shipment shipment);
 }

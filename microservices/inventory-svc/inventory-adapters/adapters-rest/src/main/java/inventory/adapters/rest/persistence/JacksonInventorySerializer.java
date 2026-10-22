@@ -6,6 +6,7 @@ import inventory.application.InventorySerializer;
 import inventory.domain.Facility;
 import inventory.domain.InventoryItem;
 import inventory.domain.Reservation;
+import inventory.domain.Shipment;
 
 /**
  * Event payload shapes consumed by order-svc and future fulfillment readers.
@@ -66,6 +67,16 @@ public class JacksonInventorySerializer implements InventorySerializer {
         fields.put("quantity", reservation.quantity());
         fields.put("status", reservation.status().name());
         fields.put("item", itemFields(item));
+        return mapper.writeValueAsString(fields);
+    }
+
+    @Override
+    public String serializeShipment(Shipment shipment) {
+        var fields = new LinkedHashMap<String, Object>();
+        fields.put("shipmentId", shipment.shipmentId());
+        fields.put("orderId", shipment.orderId());
+        fields.put("status", shipment.status().name());
+        fields.put("items", shipment.items());
         return mapper.writeValueAsString(fields);
     }
 
