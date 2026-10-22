@@ -26,7 +26,7 @@ public class PartyBeans {
 
     @Bean
     party.application.MonolithProjectionService monolithProjectionService(
-            party.application.MonolithProjectionSink sink) {
+            ofbiz.projection.IdempotentProjector.Sink sink) {
         return new party.application.MonolithProjectionService(sink);
     }
 }

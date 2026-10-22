@@ -6,18 +6,15 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 NS="ofbiz"
 
-echo "==> [1/4] Monolith Postgres stand-in (party slice)"
+echo "==> [1/3] Monolith Postgres stand-in (party slice)"
 kubectl -n "${NS}" apply -f "${SCRIPT_DIR}/monolith-db.yaml"
 kubectl -n "${NS}" rollout status deploy/monolith-db --timeout=300s
 
-echo "==> [2/4] cdc-connect KafkaUser (cloud-profile identity; local uses the plaintext listener)"
-kubectl -n "${NS}" apply -f "${SCRIPT_DIR}/kafka-user.yaml"
-
-echo "==> [3/4] Debezium Connect"
+echo "==> [2/3] Debezium Connect"
 kubectl -n "${NS}" apply -f "${SCRIPT_DIR}/kafka-connect.yaml"
 kubectl -n "${NS}" rollout status deploy/debezium-connect --timeout=600s
 
-echo "==> [4/4] monolith-party connector (REST)"
+echo "==> [3/3] monolith-party connector (REST)"
 # delete-then-POST: the JSON carries the {name, config} wrapper POST expects
 kubectl -n "${NS}" run debezium-curl --rm -i --restart=Never --image=curlimages/curl:8.10.1 \
   --command -- sh -c \

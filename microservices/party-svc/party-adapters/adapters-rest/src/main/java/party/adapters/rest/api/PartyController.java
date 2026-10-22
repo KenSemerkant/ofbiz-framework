@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import party.adapters.rest.persistence.ContactMechJson;
 import party.application.PartyService;
 import party.domain.ContactMech;
 import party.domain.ContactMechPurpose;
@@ -31,17 +32,15 @@ public class PartyController {
         this.partyService = partyService;
     }
 
-    public record ContactMechDto(String contactMechId, String type, String value,
-            Set<String> purposes) {
-    }
-
     public record UpsertPartyRequest(String partyId, String kind, String firstName,
             String lastName, String groupName, Set<String> roles,
-            List<ContactMechDto> contactMechs) {
+            List<ContactMechJson.MechDto> contactMechs) {
     }
 
+    // ponytail: contactMechs rides as the same JSON ContactMechJson emits for
+    // the entity column and the event payload — one shape, one mapper
     public record PartyResponse(String partyId, String kind, String displayName,
-            Set<String> roles, List<ContactMechDto> contactMechs) {
+            Set<String> roles, tools.jackson.databind.JsonNode contactMechs) {
     }
 
     @PostMapping
@@ -57,7 +56,7 @@ public class PartyController {
                 request.roles().forEach(party::grantRole);
             }
             if (request.contactMechs() != null) {
-                for (ContactMechDto mech : request.contactMechs) {
+                for (var mech : request.contactMechs) {
                     party.linkContactMech(new ContactMech(mech.contactMechId(),
                         ContactMechType.valueOf(mech.type()), mech.value()),
                         mech.purposes() == null ? Set.of()
@@ -101,12 +100,7 @@ public class PartyController {
         String displayName = party.kind() == PartyKind.PERSON
             ? party.person().displayName()
             : party.group().groupName();
-        List<ContactMechDto> mechs = party.contactMechs().stream()
-            .map(m -> new ContactMechDto(m.mech().contactMechId(), m.mech().type().name(),
-                m.mech().value(),
-                m.purposes().stream().map(Enum::name).collect(java.util.stream.Collectors.toSet())))
-            .toList();
         return new PartyResponse(party.partyId(), party.kind().name(), displayName,
-            party.roles(), mechs);
+            party.roles(), ContactMechJson.serializeNode(party.contactMechs()));
     }
 }

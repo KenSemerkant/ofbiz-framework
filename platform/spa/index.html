@@ -23,7 +23,6 @@
   <script>
     // dev: SPA on :4200, gateway on :8080 (same host)
     const GATEWAY = location.origin.replace(/:\d+$/, ':8080');
-    const IDP = GATEWAY; // authorize/token proxied via gateway oauth2 routes in dev
     const REDIRECT = location.origin + '/index.html';
 
     const b64url = buf => btoa(String.fromCharCode(...new Uint8Array(buf)))
@@ -34,7 +33,7 @@
       sessionStorage.setItem('verifier', verifier);
       const challenge = b64url(await crypto.subtle.digest('SHA-256',
         new TextEncoder().encode(verifier)));
-      const auth = new URL(IDP + '/oauth2/authorize');
+      const auth = new URL(GATEWAY + '/oauth2/authorize');
       auth.search = new URLSearchParams({ response_type: 'code', client_id: 'gateway',
         redirect_uri: REDIRECT, scope: 'openid', code_challenge: challenge,
         code_challenge_method: 'S256' });
@@ -44,7 +43,7 @@
     const params = new URLSearchParams(location.search);
     if (params.get('code')) {
       (async () => {
-        const res = await fetch(IDP + '/oauth2/token', {
+        const res = await fetch(GATEWAY + '/oauth2/token', {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
           body: new URLSearchParams({ grant_type: 'authorization_code',

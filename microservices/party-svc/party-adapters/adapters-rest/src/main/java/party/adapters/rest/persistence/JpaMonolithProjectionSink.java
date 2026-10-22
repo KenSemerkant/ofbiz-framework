@@ -2,7 +2,6 @@ package party.adapters.rest.persistence;
 
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.support.TransactionTemplate;
-import party.application.MonolithProjectionSink;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
@@ -13,7 +12,7 @@ import tools.jackson.databind.ObjectMapper;
  * table streams converge.
  */
 @Repository
-public class JpaMonolithProjectionSink implements MonolithProjectionSink {
+public class JpaMonolithProjectionSink implements ofbiz.projection.IdempotentProjector.Sink {
 
     private final MonolithPartyRepository parties;
     private final ProcessedEventRepository processedEvents;

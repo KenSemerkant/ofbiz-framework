@@ -25,12 +25,20 @@ public final class ContactMechJson {
     }
 
     public static String serialize(List<PartyContactMech> mechs) {
-        var dtos = mechs.stream()
+        return MAPPER.writeValueAsString(toDtos(mechs));
+    }
+
+    /** Same shape as the column/event JSON, as a tree for REST responses. */
+    public static tools.jackson.databind.JsonNode serializeNode(List<PartyContactMech> mechs) {
+        return MAPPER.valueToTree(toDtos(mechs));
+    }
+
+    private static List<MechDto> toDtos(List<PartyContactMech> mechs) {
+        return mechs.stream()
             .map(m -> new MechDto(m.mech().contactMechId(), m.mech().type().name(),
                 m.mech().value(),
                 m.purposes().stream().map(Enum::name).collect(Collectors.toSet())))
             .toList();
-        return MAPPER.writeValueAsString(dtos);
     }
 
     public static List<PartyContactMech> deserialize(String json) {

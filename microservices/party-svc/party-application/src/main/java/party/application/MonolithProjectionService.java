@@ -13,7 +13,7 @@ public class MonolithProjectionService {
 
     private final IdempotentProjector projector;
 
-    public MonolithProjectionService(MonolithProjectionSink sink) {
+    public MonolithProjectionService(IdempotentProjector.Sink sink) {
         this.projector = new IdempotentProjector(sink);
     }
 
