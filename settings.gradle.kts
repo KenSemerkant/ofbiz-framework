@@ -43,4 +43,7 @@ include(
     ":microservices:product-svc:product-domain",
     ":microservices:product-svc:product-application",
     ":microservices:product-svc:product-adapters:adapters-rest",
+    ":microservices:inventory-svc:inventory-domain",
+    ":microservices:inventory-svc:inventory-application",
+    ":microservices:inventory-svc:inventory-adapters:adapters-rest",
 )
