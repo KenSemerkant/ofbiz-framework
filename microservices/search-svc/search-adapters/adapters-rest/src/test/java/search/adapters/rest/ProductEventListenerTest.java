@@ -116,6 +116,48 @@ class ProductEventListenerTest {
         assertEquals("CAT-LAP", index.lastIndexed.fields().get("categoryIds"));
     }
 
+    /**
+     * Fixtures below are the exact bytes product-svc's JacksonProductSerializer
+     * (Jackson 3 / tools.jackson) emits — captured 2026-10-22 from trunk
+     * b360ab861e via a throwaway run, pinned verbatim. This is the contract
+     * proof that our Jackson 2 listener parses real producer output, and the
+     * canary for formatting drift (BigDecimal renders plain, Instant renders
+     * ISO-8601): if product-svc changes either, these assertions fail.
+     */
+    static final String CAPTURED_PRODUCT_EVENT =
+        "{\"productId\":\"P1\",\"productTypeId\":\"FINISHED_GOOD\",\"internalName\":\"LAP-1\","
+            + "\"productName\":\"Thinkpad Laptop\",\"categories\":[\"CAT-LAP\"],"
+            + "\"associations\":[],\"prices\":[{\"productPriceTypeId\":\"DEFAULT_PRICE\","
+            + "\"currencyUomId\":\"USD\",\"fromDate\":\"2026-01-01T00:00:00Z\","
+            + "\"thruDate\":null,\"price\":1299.99}]}";
+
+    static final String CAPTURED_PRICE_EVENT =
+        "{\"productId\":\"P1\",\"productPriceTypeId\":\"DEFAULT_PRICE\","
+            + "\"currencyUomId\":\"USD\",\"price\":1099.99,\"removed\":false}";
+
+    @Test
+    void capturedSerializerOutputParsesVerbatim() {
+        RecordingIndex index = new RecordingIndex();
+        RecordingProcessed processed = new RecordingProcessed();
+        ProductIndexService service =
+            new ProductIndexService(index, processed, new RecordingCategories());
+        ProductEventListener listener = new ProductEventListener(service);
+
+        listener.onProductEvent(
+            record(ProductEventListener.PRODUCT_CREATED, CAPTURED_PRODUCT_EVENT));
+
+        assertEquals("P1", index.lastIndexed.docId());
+        assertEquals("1299.99", index.lastIndexed.fields().get("defaultPrice"),
+            "BigDecimal must render plain (no scientific notation / scale noise)");
+        assertEquals("USD", index.lastIndexed.fields().get("defaultPriceCurrency"));
+
+        listener.onProductEvent(
+            record(ProductEventListener.PRICE_CHANGED, CAPTURED_PRICE_EVENT));
+
+        assertEquals("1099.99", index.lastIndexed.fields().get("defaultPrice"),
+            "captured price-change payload must merge into the default price");
+    }
+
     @Test
     void eventIdBindsToTopicPartitionOffset() {
         RecordingProcessed processed = new RecordingProcessed();

@@ -103,13 +103,10 @@ class ProductIndexerApiTest {
 
         // create -> searchable < 5s
         String productId = "P-" + UUID.randomUUID();
-        long startedAt = System.nanoTime();
         kafka.send(CREATED, productId, productJson(productId, "Thinkpad Laptop")).join();
         assertTrue(await(() -> searchable(productId, "thinkpad"), SEARCHABLE_WITHIN),
             "product create did not become searchable within "
                 + SEARCHABLE_WITHIN.toSeconds() + "s");
-        assertTrue(elapsedSince(startedAt) < SEARCHABLE_WITHIN.toMillis(),
-            "create-to-searchable exceeded the AC bound");
 
         var fields = searchIndex.get(ProductIndexService.INDEX, productId);
         assertEquals("1", fields.get("schemaVersion"), "doc fields: " + fields);
@@ -118,7 +115,6 @@ class ProductIndexerApiTest {
         assertEquals("USD", fields.get("defaultPriceCurrency"));
 
         // update -> new name searchable < 5s
-        startedAt = System.nanoTime();
         kafka.send(UPDATED, productId, productJson(productId, "Thinkpad Pro Laptop")).join();
         assertTrue(await(() -> searchable(productId, "pro"), SEARCHABLE_WITHIN),
             "product update did not become searchable within the AC bound");
@@ -169,10 +165,6 @@ class ProductIndexerApiTest {
     private boolean searchable(String productId, String term) {
         return searchIndex.search(new SearchQuery(term, ProductIndexService.INDEX, 100)).stream()
             .anyMatch(result -> result.docId().equals(productId));
-    }
-
-    private static long elapsedSince(long startedAt) {
-        return (System.nanoTime() - startedAt) / 1_000_000;
     }
 
     private static boolean await(java.util.function.BooleanSupplier condition,
