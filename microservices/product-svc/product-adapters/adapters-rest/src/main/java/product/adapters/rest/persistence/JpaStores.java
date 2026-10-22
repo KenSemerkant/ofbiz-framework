@@ -26,6 +26,15 @@ public class JpaStores implements Stores {
             store.defaultCurrencyUomId(), store.inventoryFacilityId()));
     }
 
+    @Override
+    public boolean delete(String productStoreId) {
+        if (!stores.existsById(productStoreId)) {
+            return false;
+        }
+        stores.deleteById(productStoreId);
+        return true;
+    }
+
     private Store toDomain(StoreEntity entity) {
         return new Store(entity.getProductStoreId(), entity.getStoreName(),
             entity.getDefaultCurrencyUomId(), entity.getInventoryFacilityId());

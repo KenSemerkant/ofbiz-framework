@@ -70,4 +70,17 @@ class StoreApiTest {
         assertEquals(400, postStore(
             "{\"productStoreId\":\"SHOP\",\"storeName\":\" \"}").statusCode());
     }
+
+    @Test
+    void deleteStoreRemovesRow() throws Exception {
+        assertEquals(201, postStore("""
+            {"productStoreId":"DEMO","storeName":"Demo Store"}""").statusCode());
+        assertEquals(204, client.send(HttpRequest.newBuilder()
+            .uri(URI.create("http://localhost:" + port + "/api/v1/stores/DEMO"))
+            .DELETE().build(), HttpResponse.BodyHandlers.ofString()).statusCode());
+        assertEquals(404, getStore("DEMO").statusCode());
+        assertEquals(404, client.send(HttpRequest.newBuilder()
+            .uri(URI.create("http://localhost:" + port + "/api/v1/stores/nope"))
+            .DELETE().build(), HttpResponse.BodyHandlers.ofString()).statusCode());
+    }
 }

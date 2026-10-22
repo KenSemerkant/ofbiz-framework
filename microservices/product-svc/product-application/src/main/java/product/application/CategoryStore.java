@@ -13,4 +13,6 @@ public interface CategoryStore {
 
     /** Direct children of a category, ordered by category id. */
     List<Category> findChildren(String productCategoryId);
+
+    void delete(String productCategoryId);
 }

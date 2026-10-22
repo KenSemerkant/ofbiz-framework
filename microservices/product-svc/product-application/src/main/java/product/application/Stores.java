@@ -9,4 +9,7 @@ public interface Stores {
     Optional<Store> find(String productStoreId);
 
     void save(Store store);
+
+    /** @return true if a row existed and was removed. */
+    boolean delete(String productStoreId);
 }

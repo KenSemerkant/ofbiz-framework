@@ -29,6 +29,20 @@ public class JpaProductStore implements ProductStore {
             ProductJson.serializePrices(product.prices())));
     }
 
+    @Override
+    public boolean delete(String productId) {
+        if (!products.existsById(productId)) {
+            return false;
+        }
+        products.deleteById(productId);
+        return true;
+    }
+
+    @Override
+    public boolean anyInCategory(String categoryId) {
+        return products.existsByCategoriesContaining("\"" + categoryId + "\"");
+    }
+
     private Product toDomain(ProductEntity entity) {
         Product product = new Product(entity.getProductId(), entity.getProductTypeId(),
             entity.getInternalName(), entity.getProductName(),

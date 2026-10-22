@@ -3,12 +3,14 @@ package product.adapters.rest.api;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.transaction.annotation.Transactional;
 import product.application.CategoryService;
 import product.domain.Category;
 import product.domain.CategoryNode;
@@ -36,7 +38,12 @@ public class CategoryController {
             String categoryName, List<CategoryTreeResponse> children) {
     }
 
+    public record ConflictResponse(String error) {
+    }
+
+    /** Adapter-layer transaction boundary (ADR-009, spec-review fix). */
     @PostMapping
+    @Transactional
     ResponseEntity<CategoryResponse> upsert(@RequestBody UpsertCategoryRequest request) {
         Category category;
         try {
@@ -64,6 +71,18 @@ public class CategoryController {
             .map(this::toTreeResponse)
             .map(ResponseEntity::ok)
             .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    /** Delete (spec-review fix): only a leaf without member products. */
+    @DeleteMapping("/{productCategoryId}")
+    ResponseEntity<?> delete(@PathVariable String productCategoryId) {
+        return switch (categoryService.delete(productCategoryId)) {
+            case DELETED -> ResponseEntity.noContent().build();
+            case NOT_FOUND -> ResponseEntity.notFound().build();
+            case NOT_LEAF -> ResponseEntity.status(HttpStatus.CONFLICT).body(
+                new ConflictResponse(productCategoryId
+                    + " is not a leaf: it has child categories or member products"));
+        };
     }
 
     private CategoryResponse toResponse(Category category) {

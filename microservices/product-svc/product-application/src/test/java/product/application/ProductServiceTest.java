@@ -34,6 +34,17 @@ class ProductServiceTest {
             public void save(Product product) {
                 storeData.put(product.productId(), product);
             }
+
+            @Override
+            public boolean delete(String productId) {
+                return storeData.remove(productId) != null;
+            }
+
+            @Override
+            public boolean anyInCategory(String categoryId) {
+                return storeData.values().stream()
+                    .anyMatch(p -> p.categoryIds().contains(categoryId));
+            }
         },
         (eventType, aggregateKey, payload) -> outboxEvents.add(eventType),
         product -> "{\"productId\":\"" + product.productId() + "\"}",
@@ -95,6 +106,21 @@ class ProductServiceTest {
         assertTrue(service.resolvePrice("WIDGET", "DEFAULT_PRICE", "USD",
             T0.minusSeconds(1)).isEmpty());
         assertTrue(service.resolvePrice("nope", "DEFAULT_PRICE", "USD", T0).isEmpty());
+    }
+
+    @Test
+    void deleteEmitsDeletedEvent() {
+        service.upsert(new Product("WIDGET", "FINISHED_GOOD", "Widget", null, null, null));
+        outboxEvents.clear();
+        assertTrue(service.delete("WIDGET"));
+        assertTrue(service.get("WIDGET").isEmpty());
+        assertEquals(List.of(ProductService.PRODUCT_DELETED), outboxEvents);
+    }
+
+    @Test
+    void deleteUnknownProductIsFalseWithoutEvent() {
+        assertTrue(!service.delete("nope"));
+        assertTrue(outboxEvents.isEmpty());
     }
 
     @Test

@@ -17,6 +17,7 @@ public class ProductService {
 
     public static final String PRODUCT_CREATED = "product.product.created.v1";
     public static final String PRODUCT_UPDATED = "product.product.updated.v1";
+    public static final String PRODUCT_DELETED = "product.product.deleted.v1";
     public static final String PRICE_CHANGED = "product.price.changed.v1";
 
     private final ProductStore store;
@@ -42,6 +43,17 @@ public class ProductService {
         outbox.append(existing.isEmpty() ? PRODUCT_CREATED : PRODUCT_UPDATED,
             product.productId(), serializer.serialize(product));
         emitPriceDeltas(existing.orElse(null), product);
+    }
+
+    /** @return false when the product does not exist (no delete, no event). */
+    public boolean delete(String productId) {
+        if (store.find(productId).isEmpty()) {
+            return false;
+        }
+        store.delete(productId);
+        outbox.append(PRODUCT_DELETED, productId,
+            "{\"productId\":\"" + productId + "\"}");
+        return true;
     }
 
     /**

@@ -24,6 +24,11 @@ class StoreServiceTest {
             public void save(Store store) {
                 storeData.put(store.productStoreId(), store);
             }
+
+            @Override
+            public boolean delete(String productStoreId) {
+                return storeData.remove(productStoreId) != null;
+            }
         });
 
     @Test
@@ -38,5 +43,13 @@ class StoreServiceTest {
     @Test
     void unknownStoreIsEmpty() {
         assertTrue(service.get("nope").isEmpty());
+    }
+
+    @Test
+    void deleteRemovesStore() {
+        service.upsert(new Store("SHOP", "Web Store", null, null));
+        assertTrue(service.delete("SHOP"));
+        assertTrue(service.get("SHOP").isEmpty());
+        assertTrue(!service.delete("SHOP"));
     }
 }

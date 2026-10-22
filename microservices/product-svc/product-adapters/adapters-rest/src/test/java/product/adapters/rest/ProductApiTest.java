@@ -70,6 +70,18 @@ class ProductApiTest {
             .GET().build(), HttpResponse.BodyHandlers.ofString());
     }
 
+    private HttpResponse<String> getCategory(String categoryId) throws Exception {
+        return client.send(HttpRequest.newBuilder()
+            .uri(URI.create("http://localhost:" + port + "/api/v1/categories/" + categoryId))
+            .GET().build(), HttpResponse.BodyHandlers.ofString());
+    }
+
+    private HttpResponse<String> delete(String path) throws Exception {
+        return client.send(HttpRequest.newBuilder()
+            .uri(URI.create("http://localhost:" + port + path))
+            .DELETE().build(), HttpResponse.BodyHandlers.ofString());
+    }
+
     @Test
     void upsertThenFetchRoundtripEmitsCreatedThenUpdated() throws Exception {
         HttpResponse<String> created = postProduct("""
@@ -135,5 +147,55 @@ class ProductApiTest {
         assertTrue(tree.body().contains("\"productCategoryId\":\"DRILLS\""));
 
         assertEquals(404, getTree("nope").statusCode());
+    }
+
+    @Test
+    void deleteProductRemovesRowAndEmitsDeletedEvent() throws Exception {
+        assertEquals(201, postProduct("""
+            {"productId":"GONE","productTypeId":"FINISHED_GOOD","internalName":"Goner"}""")
+            .statusCode());
+
+        assertEquals(204, delete("/api/v1/products/GONE").statusCode());
+        assertEquals(404, getProduct("GONE").statusCode());
+        assertEquals("product.product.deleted.v1",
+            outbox.findAll().stream()
+                .filter(e -> "GONE".equals(e.getAggregateKey()))
+                .reduce((first, second) -> second).orElseThrow().getEventType());
+        assertTrue(outbox.findAll().stream()
+            .filter(e -> "GONE".equals(e.getAggregateKey()))
+            .anyMatch(e -> e.getPayload().contains("\"productId\":\"GONE\"")));
+    }
+
+    @Test
+    void deleteUnknownProductIsNotFound() throws Exception {
+        assertEquals(404, delete("/api/v1/products/nope").statusCode());
+    }
+
+    @Test
+    void deleteCategoryOnlyWhenLeafWithoutMembers() throws Exception {
+        postCategory("{\"productCategoryId\":\"ROOT2\",\"categoryName\":\"Root\"}");
+        postCategory("{\"productCategoryId\":\"TOOLS2\",\"primaryParentCategoryId\":\"ROOT2\","
+            + "\"categoryName\":\"Tools\"}");
+        postCategory("{\"productCategoryId\":\"DRILLS2\",\"primaryParentCategoryId\":\"TOOLS2\","
+            + "\"categoryName\":\"Drills\"}");
+        assertEquals(201, postProduct("""
+            {"productId":"WIDGET2","productTypeId":"FINISHED_GOOD","internalName":"w",
+             "categoryIds":["TOOLS2"]}""").statusCode());
+
+        // not a leaf: has a child and a member product
+        assertEquals(409, delete("/api/v1/categories/TOOLS2").statusCode());
+        // still has children
+        assertEquals(409, delete("/api/v1/categories/ROOT2").statusCode());
+        assertEquals(200, getCategory("TOOLS2").statusCode());
+
+        // leaf without members deletes; no event (category delete is not in
+        // the topic set)
+        assertEquals(204, delete("/api/v1/categories/DRILLS2").statusCode());
+        assertEquals(404, getCategory("DRILLS2").statusCode());
+        assertTrue(outbox.findAll().stream()
+            .filter(e -> "DRILLS2".equals(e.getAggregateKey()))
+            .allMatch(e -> "product.category.updated.v1".equals(e.getEventType())));
+
+        assertEquals(404, delete("/api/v1/categories/nope").statusCode());
     }
 }

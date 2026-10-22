@@ -30,6 +30,11 @@ public class JpaCategoryStore implements CategoryStore {
     }
 
     @Override
+    public void delete(String productCategoryId) {
+        categories.deleteById(productCategoryId);
+    }
+
+    @Override
     public List<Category> findChildren(String productCategoryId) {
         return categories
             .findByPrimaryParentCategoryIdOrderByProductCategoryId(productCategoryId).stream()

@@ -37,6 +37,31 @@ class CategoryServiceTest {
                     .sorted((a, b) -> a.productCategoryId().compareTo(b.productCategoryId()))
                     .toList();
             }
+
+            @Override
+            public void delete(String productCategoryId) {
+                storeData.remove(productCategoryId);
+            }
+        },
+        new ProductStore() {
+            @Override
+            public Optional<product.domain.Product> find(String productId) {
+                return Optional.empty();
+            }
+
+            @Override
+            public void save(product.domain.Product product) {
+            }
+
+            @Override
+            public boolean delete(String productId) {
+                return false;
+            }
+
+            @Override
+            public boolean anyInCategory(String categoryId) {
+                return "MEMBERED".equals(categoryId);
+            }
         },
         (eventType, aggregateKey, payload) -> outboxEvents.add(eventType));
 
@@ -63,5 +88,19 @@ class CategoryServiceTest {
     @Test
     void unknownRootTreeIsEmpty() {
         assertTrue(service.tree("nope").isEmpty());
+    }
+
+    @Test
+    void deleteOnlyWhenLeafWithoutMembers() {
+        assertEquals(CategoryService.DeleteResult.NOT_FOUND, service.delete("nope"));
+
+        service.upsert(new Category("ROOT", null, "Root"));
+        service.upsert(new Category("CHILD", "ROOT", "Child"));
+        assertEquals(CategoryService.DeleteResult.NOT_LEAF, service.delete("ROOT"));
+        assertEquals(CategoryService.DeleteResult.DELETED, service.delete("CHILD"));
+        assertTrue(service.get("CHILD").isEmpty());
+
+        service.upsert(new Category("MEMBERED", null, "Has products"));
+        assertEquals(CategoryService.DeleteResult.NOT_LEAF, service.delete("MEMBERED"));
     }
 }

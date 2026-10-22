@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Set;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.transaction.annotation.Transactional;
 import product.adapters.rest.persistence.ProductJson;
 import product.application.ProductService;
 import product.domain.Product;
@@ -43,7 +45,12 @@ public class ProductController {
             String currencyUomId, java.math.BigDecimal price, Instant resolvedAt) {
     }
 
+    /**
+     * Adapter-layer transaction boundary (ADR-009, spec-review fix): the
+     * state change and its outbox row(s) commit — or roll back — together.
+     */
     @PostMapping
+    @Transactional
     ResponseEntity<ProductResponse> upsert(@RequestBody UpsertProductRequest request) {
         Product product;
         try {
@@ -79,6 +86,16 @@ public class ProductController {
                 snapshot.resolvedAt()))
             .map(ResponseEntity::ok)
             .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    /** Delete (spec-review fix): row removal + deleted event commit together. */
+    @DeleteMapping("/{productId}")
+    @Transactional
+    ResponseEntity<Void> delete(@PathVariable String productId) {
+        if (!productService.delete(productId)) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{productId}")

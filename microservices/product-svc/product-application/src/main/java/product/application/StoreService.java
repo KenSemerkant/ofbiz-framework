@@ -23,4 +23,9 @@ public class StoreService {
     public void upsert(Store store) {
         stores.save(store);
     }
+
+    /** @return false when the store does not exist. */
+    public boolean delete(String productStoreId) {
+        return stores.delete(productStoreId);
+    }
 }

@@ -30,8 +30,9 @@ public class ProductBeans {
     }
 
     @Bean
-    CategoryService categoryService(CategoryStore store, OutboxWriter outbox) {
-        return new CategoryService(store, outbox);
+    CategoryService categoryService(CategoryStore store, product.application.ProductStore products,
+            OutboxWriter outbox) {
+        return new CategoryService(store, products, outbox);
     }
 
     @Bean
