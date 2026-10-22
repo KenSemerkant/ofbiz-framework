@@ -19,6 +19,7 @@ public class JacksonProductSerializer implements ProductSerializer {
         fields.put("productName", product.productName());
         fields.put("categories", product.categoryIds());
         fields.put("associations", ProductJson.serializeAssocNode(product.associations()));
+        fields.put("prices", ProductJson.serializePriceNode(product.prices()));
         return mapper.writeValueAsString(fields);
     }
 }

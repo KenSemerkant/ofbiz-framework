@@ -20,6 +20,7 @@ public final class Product {
     private final String productName;
     private final Set<String> categoryIds = new LinkedHashSet<>();
     private final List<ProductAssoc> associations = new ArrayList<>();
+    private final List<ProductPrice> prices = new ArrayList<>();
 
     public Product(String productId, String productTypeId, String internalName,
             String productName, Collection<String> categoryIds,
@@ -76,6 +77,17 @@ public final class Product {
         return associations.stream().filter(a -> a.activeAt(at)).toList();
     }
 
+    /** @return true if the price row is new (P3-F1-S2). */
+    public boolean addPrice(ProductPrice price) {
+        if (price == null) {
+            throw new IllegalArgumentException("price must not be null");
+        }
+        if (prices.contains(price)) {
+            return false;
+        }
+        return prices.add(price);
+    }
+
     public String productId() {
         return productId;
     }
@@ -98,5 +110,9 @@ public final class Product {
 
     public List<ProductAssoc> associations() {
         return List.copyOf(associations);
+    }
+
+    public List<ProductPrice> prices() {
+        return List.copyOf(prices);
     }
 }

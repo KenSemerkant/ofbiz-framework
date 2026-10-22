@@ -23,8 +23,10 @@ public class ProductBeans {
 
     @Bean
     ProductService productService(ProductStore store, OutboxWriter outbox,
-            ProductSerializer serializer) {
-        return new ProductService(store, outbox, serializer);
+            ProductSerializer serializer,
+            @org.springframework.beans.factory.annotation.Value(
+                "${product.default-currency:USD}") String defaultCurrencyUomId) {
+        return new ProductService(store, outbox, serializer, defaultCurrencyUomId);
     }
 
     @Bean

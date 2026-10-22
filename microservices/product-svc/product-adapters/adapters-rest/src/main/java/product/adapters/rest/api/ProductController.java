@@ -1,5 +1,6 @@
 package product.adapters.rest.api;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import org.springframework.http.HttpStatus;
@@ -9,11 +10,13 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import product.adapters.rest.persistence.ProductJson;
 import product.application.ProductService;
 import product.domain.Product;
 import product.domain.ProductAssoc;
+import product.domain.ProductPrice;
 
 /** North-south REST edge (ADR-010): only the gateway routes here. */
 @RestController
@@ -28,11 +31,16 @@ public class ProductController {
 
     public record UpsertProductRequest(String productId, String productTypeId,
             String internalName, String productName, Set<String> categoryIds,
-            List<ProductJson.AssocDto> associations) {
+            List<ProductJson.AssocDto> associations, List<ProductJson.PriceDto> prices) {
     }
 
     public record ProductResponse(String productId, String productTypeId, String internalName,
-            String productName, Set<String> categoryIds, List<ProductJson.AssocDto> associations) {
+            String productName, Set<String> categoryIds, List<ProductJson.AssocDto> associations,
+            List<ProductJson.PriceDto> prices) {
+    }
+
+    public record PriceSnapshotResponse(String productId, String productPriceTypeId,
+            String currencyUomId, java.math.BigDecimal price, Instant resolvedAt) {
     }
 
     @PostMapping
@@ -47,11 +55,30 @@ public class ProductController {
                         assoc.productAssocTypeId(), assoc.fromDate(), assoc.thruDate()));
                 }
             }
+            if (request.prices() != null) {
+                for (ProductJson.PriceDto price : request.prices()) {
+                    product.addPrice(new ProductPrice(price.productPriceTypeId(),
+                        price.currencyUomId(), price.fromDate(), price.thruDate(), price.price()));
+                }
+            }
         } catch (IllegalArgumentException | NullPointerException e) {
             return ResponseEntity.badRequest().body(null);
         }
         productService.upsert(product);
         return ResponseEntity.status(HttpStatus.CREATED).body(toResponse(product));
+    }
+
+    /** AC (P3-F1-S2): applicable price at an instant; 404 when none applies. */
+    @GetMapping("/{productId}/price")
+    ResponseEntity<PriceSnapshotResponse> price(@PathVariable String productId,
+            @RequestParam(defaultValue = "DEFAULT_PRICE") String priceType,
+            @RequestParam String currency, @RequestParam Instant at) {
+        return productService.resolvePrice(productId, priceType, currency, at)
+            .map(snapshot -> new PriceSnapshotResponse(snapshot.productId(),
+                snapshot.productPriceTypeId(), snapshot.currencyUomId(), snapshot.price(),
+                snapshot.resolvedAt()))
+            .map(ResponseEntity::ok)
+            .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @GetMapping("/{productId}")
@@ -68,6 +95,10 @@ public class ProductController {
             product.associations().stream()
                 .map(a -> new ProductJson.AssocDto(a.productIdTo(), a.productAssocTypeId(),
                     a.fromDate(), a.thruDate()))
+                .toList(),
+            product.prices().stream()
+                .map(p -> new ProductJson.PriceDto(p.productPriceTypeId(), p.currencyUomId(),
+                    p.fromDate(), p.thruDate(), p.price()))
                 .toList());
     }
 }

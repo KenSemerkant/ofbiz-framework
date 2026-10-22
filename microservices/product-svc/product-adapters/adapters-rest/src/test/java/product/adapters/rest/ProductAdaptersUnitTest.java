@@ -108,6 +108,17 @@ class ProductAdaptersUnitTest {
     }
 
     @Test
+    void serializerPayloadShapeIncludesPrices() {
+        Product product = new Product("WIDGET", "FINISHED_GOOD", "Widget", null, null, null);
+        product.addPrice(new product.domain.ProductPrice("DEFAULT_PRICE", "USD",
+            Instant.parse("2026-01-01T00:00:00Z"), null, new java.math.BigDecimal("10.00")));
+        String json = new JacksonProductSerializer().serialize(product);
+        assertTrue(json.contains("\"productPriceTypeId\":\"DEFAULT_PRICE\""));
+        assertTrue(json.contains("\"currencyUomId\":\"USD\""));
+        assertTrue(json.contains("\"price\":10.00"));
+    }
+
+    @Test
     void productJsonRoundtrip() {
         List<ProductAssoc> assocs = List.of(
             new ProductAssoc("GIZMO", "PRODUCT_VARIANT",
@@ -116,6 +127,10 @@ class ProductAdaptersUnitTest {
             ProductJson.deserializeCategories(ProductJson.serializeCategories(
                 List.of("TOOLS", "FASTENERS"))));
         assertEquals(assocs, ProductJson.deserializeAssocs(ProductJson.serializeAssocs(assocs)));
+        List<product.domain.ProductPrice> prices = List.of(
+            new product.domain.ProductPrice("DEFAULT_PRICE", "USD",
+                Instant.parse("2026-01-01T00:00:00Z"), null, new java.math.BigDecimal("10.00")));
+        assertEquals(prices, ProductJson.deserializePrices(ProductJson.serializePrices(prices)));
         assertEquals(List.of(), ProductJson.deserializeCategories(
             ProductJson.serializeCategories(null)));
     }
@@ -123,13 +138,14 @@ class ProductAdaptersUnitTest {
     @Test
     void entityAccessors() {
         ProductEntity product = new ProductEntity("WIDGET", "FINISHED_GOOD", "Widget", "W",
-            "[]", "[]");
+            "[]", "[]", "[]");
         assertEquals("WIDGET", product.getProductId());
         assertEquals("FINISHED_GOOD", product.getProductTypeId());
         assertEquals("Widget", product.getInternalName());
         assertEquals("W", product.getProductName());
         assertEquals("[]", product.getCategories());
         assertEquals("[]", product.getAssocs());
+        assertEquals("[]", product.getPrices());
         assertTrue(product.getUpdatedAt() != null);
 
         CategoryEntity category = new CategoryEntity("TOOLS", "ROOT", "Tools");

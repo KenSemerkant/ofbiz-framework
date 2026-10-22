@@ -25,7 +25,8 @@ public class JpaProductStore implements ProductStore {
         products.save(new ProductEntity(product.productId(), product.productTypeId(),
             product.internalName(), product.productName(),
             ProductJson.serializeCategories(product.categoryIds()),
-            ProductJson.serializeAssocs(product.associations())));
+            ProductJson.serializeAssocs(product.associations()),
+            ProductJson.serializePrices(product.prices())));
     }
 
     private Product toDomain(ProductEntity entity) {
@@ -33,6 +34,7 @@ public class JpaProductStore implements ProductStore {
             entity.getInternalName(), entity.getProductName(),
             ProductJson.deserializeCategories(entity.getCategories()), null);
         ProductJson.deserializeAssocs(entity.getAssocs()).forEach(product::associateWith);
+        ProductJson.deserializePrices(entity.getPrices()).forEach(product::addPrice);
         return product;
     }
 }

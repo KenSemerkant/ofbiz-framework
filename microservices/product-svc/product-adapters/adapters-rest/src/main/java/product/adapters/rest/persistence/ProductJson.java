@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import product.domain.ProductAssoc;
+import product.domain.ProductPrice;
 import tools.jackson.databind.ObjectMapper;
 
 /**
@@ -17,6 +18,10 @@ public final class ProductJson {
 
     public record AssocDto(String productIdTo, String productAssocTypeId, Instant fromDate,
             Instant thruDate) {
+    }
+
+    public record PriceDto(String productPriceTypeId, String currencyUomId, Instant fromDate,
+            Instant thruDate, java.math.BigDecimal price) {
     }
 
     private ProductJson() {
@@ -46,6 +51,32 @@ public final class ProductJson {
         return dtos.stream()
             .map(dto -> new ProductAssoc(dto.productIdTo(), dto.productAssocTypeId(),
                 dto.fromDate(), dto.thruDate()))
+            .toList();
+    }
+
+    public static String serializePrices(List<ProductPrice> prices) {
+        return MAPPER.writeValueAsString(toPriceDtos(prices));
+    }
+
+    /** Prices as a JSON tree for embedding in event payloads. */
+    public static tools.jackson.databind.JsonNode serializePriceNode(
+            List<ProductPrice> prices) {
+        return MAPPER.valueToTree(toPriceDtos(prices));
+    }
+
+    public static List<ProductPrice> deserializePrices(String json) {
+        List<PriceDto> dtos = MAPPER.readValue(json,
+            MAPPER.getTypeFactory().constructCollectionType(ArrayList.class, PriceDto.class));
+        return dtos.stream()
+            .map(dto -> new ProductPrice(dto.productPriceTypeId(), dto.currencyUomId(),
+                dto.fromDate(), dto.thruDate(), dto.price()))
+            .toList();
+    }
+
+    private static List<PriceDto> toPriceDtos(List<ProductPrice> prices) {
+        return prices.stream()
+            .map(price -> new PriceDto(price.productPriceTypeId(), price.currencyUomId(),
+                price.fromDate(), price.thruDate(), price.price()))
             .toList();
     }
 

@@ -29,3 +29,6 @@ management:
 product:
   relay:
     enabled: true
+  # Fallback currency for price resolution when the requested currency has
+  # no applicable price (P3-F1-S2 default currency handling).
+  default-currency: ${PRODUCT_DEFAULT_CURRENCY:USD}

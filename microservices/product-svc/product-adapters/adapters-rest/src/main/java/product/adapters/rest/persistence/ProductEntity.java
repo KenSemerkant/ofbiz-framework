@@ -29,6 +29,9 @@ public class ProductEntity {
     @Column(nullable = false)
     private String assocs;
 
+    @Column(nullable = false)
+    private String prices;
+
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt = Instant.now();
 
@@ -36,13 +39,14 @@ public class ProductEntity {
     }
 
     public ProductEntity(String productId, String productTypeId, String internalName,
-            String productName, String categories, String assocs) {
+            String productName, String categories, String assocs, String prices) {
         this.productId = productId;
         this.productTypeId = productTypeId;
         this.internalName = internalName;
         this.productName = productName;
         this.categories = categories;
         this.assocs = assocs;
+        this.prices = prices;
     }
 
     public String getProductId() {
@@ -67,6 +71,10 @@ public class ProductEntity {
 
     public String getAssocs() {
         return assocs;
+    }
+
+    public String getPrices() {
+        return prices;
     }
 
     public Instant getUpdatedAt() {

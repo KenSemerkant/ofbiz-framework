@@ -13,6 +13,9 @@ inventory-svc, P3-F2).
 | ProductCategoryRollup | `primaryParentCategoryId` on Category | single primary parent per node; dated multi-parent rollups not modeled until a consumer needs them |
 | ProductCategoryMember | categories JSON on products | undated membership set (fromDate/thruDate dropped); normalize if a dated-membership query appears |
 | ProductAssoc | assocs JSON on products | productIdTo + assocTypeId + from/thru |
+| ProductPrice | prices JSON on products | type + currency + half-open from/thru + amount; date-range resolution (P3-F1-S2) |
+| ProductPriceType / ProductPricePurpose / Uom (currency) | free-form ids on ProductPrice | shared vocabularies stay ids; no lookup tables yet | 
+| ProductPriceRule (+Condition/+Action) | not migrated | rule engine not carried over; the dated ProductPrice rows ARE the price rules in product-svc (selection: requested currency → default currency, latest fromDate wins). Revisit if sale/promo rules need first-class modeling. |
 
 ## Historical archive
 
