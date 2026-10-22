@@ -9,6 +9,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.Future;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -150,6 +151,87 @@ class InventoryApiTest {
             .statusCode());
         assertEquals(400, post("/api/v1/inventory-items/DUP/adjust", "{\"quantity\":0}")
             .statusCode());
+    }
+
+    /**
+     * Quality review: concurrent stock ops on one item must conflict-and-
+     * retry (409/200), never 500 — and no lost updates: every successful
+     * receive lands in the totals.
+     */
+    @Test
+    void concurrentReceivesRetryInsteadOfFailingAndLoseNothing() throws Exception {
+        assertEquals(201, post("/api/v1/inventory-items",
+            "{\"inventoryItemId\":\"RACE\",\"productId\":\"WIDGET\",\"facilityId\":\"WH1\"}")
+            .statusCode());
+
+        int threads = 10;
+        var executor = java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor();
+        var start = new java.util.concurrent.CountDownLatch(1);
+        var results = new java.util.ArrayList<Future<Integer>>();
+        for (int i = 0; i < threads; i++) {
+            results.add(executor.submit(() -> {
+                start.await();
+                Thread.sleep(java.util.concurrent.ThreadLocalRandom.current().nextLong(20));
+                return post("/api/v1/inventory-items/RACE/receive", "{\"quantity\":1}")
+                    .statusCode();
+            }));
+        }
+        start.countDown();
+        int successes = 0;
+        for (Future<Integer> result : results) {
+            int status = result.get(30, java.util.concurrent.TimeUnit.SECONDS);
+            org.junit.jupiter.api.Assertions.assertNotEquals(500, status,
+                "optimistic conflict must retry, not 500");
+            if (status == 200) {
+                successes++;
+            }
+        }
+        executor.shutdown();
+
+        // no lost updates: the totals equal exactly the successful receives.
+        // A 409 here is legal behavior (bounded retry exhausted under
+        // contention) — what must never happen is a 500 or a lost increment.
+        HttpResponse<String> item = getItem("RACE");
+        assertTrue(item.body().contains(
+            "\"quantityOnHandTotal\":" + successes));
+        assertTrue(item.body().contains(
+            "\"availableToPromiseTotal\":" + successes));
+        assertTrue(successes >= 1, "the herd should overwhelmingly succeed");
+        assertEquals(successes, outboxFor("RACE").stream()
+            .filter(e -> "inventory.stock.received.v1".equals(e.getEventType())).count());
+    }
+
+    /** Quality review: duplicate-id create race → one row, one 201, one 409. */
+    @Test
+    void duplicateCreateRaceYieldsExactlyOneRowAndEvent() throws Exception {
+        var executor = java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor();
+        var start = new java.util.concurrent.CountDownLatch(1);
+        var results = new java.util.ArrayList<Future<Integer>>();
+        for (int i = 0; i < 2; i++) {
+            results.add(executor.submit(() -> {
+                start.await();
+                return post("/api/v1/inventory-items",
+                    "{\"inventoryItemId\":\"DUP-RACE\",\"productId\":\"P\",\"facilityId\":\"F\"}")
+                    .statusCode();
+            }));
+        }
+        start.countDown();
+        int created = 0;
+        int conflicts = 0;
+        for (Future<Integer> result : results) {
+            int status = result.get(30, java.util.concurrent.TimeUnit.SECONDS);
+            if (status == 201) {
+                created++;
+            } else {
+                assertEquals(409, status, "duplicate race must conflict, not " + status);
+                conflicts++;
+            }
+        }
+        executor.shutdown();
+        assertEquals(1, created);
+        assertEquals(1, conflicts);
+        assertEquals(1, outboxFor("DUP-RACE").stream()
+            .filter(e -> "inventory.item.created.v1".equals(e.getEventType())).count());
     }
 
     @Test

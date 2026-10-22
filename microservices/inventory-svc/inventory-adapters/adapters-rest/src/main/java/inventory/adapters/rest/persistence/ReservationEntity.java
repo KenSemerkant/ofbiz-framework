@@ -4,6 +4,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.math.BigDecimal;
 import java.time.Instant;
 import inventory.domain.Reservation;
@@ -36,6 +37,11 @@ public class ReservationEntity {
 
     @Column(nullable = false)
     private String status;
+
+    /** Optimistic concurrency (quality review): stale writes fail at flush. */
+    @Version
+    @Column(name = "version", nullable = false)
+    private long version;
 
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt = Instant.now();

@@ -3,6 +3,7 @@ package inventory.adapters.rest.api;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.NoSuchElementException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -63,7 +64,8 @@ public class ShipmentsController {
                 .body(toResponse(OptimisticRetry.run(() -> operations.create(shipment))));
         } catch (IllegalArgumentException | NullPointerException e) {
             return ResponseEntity.badRequest().body(null);
-        } catch (DuplicateException e) {
+        } catch (DuplicateException | DataIntegrityViolationException e) {
+            // DataIntegrityViolation: duplicate-id create race lost (PK hit)
             return ResponseEntity.status(HttpStatus.CONFLICT).body(null);
         }
     }
@@ -81,7 +83,8 @@ public class ShipmentsController {
         try {
             return ResponseEntity.ok(
                 toResponse(OptimisticRetry.run(() -> operations.pack(shipmentId))));
-        } catch (InvalidTransitionException e) {
+        } catch (InvalidTransitionException | OptimisticLockingFailureException e) {
+            // quality review: a pack off a stale snapshot must conflict, not 500
             return ResponseEntity.status(HttpStatus.CONFLICT).body(null);
         } catch (NoSuchElementException e) {
             return ResponseEntity.notFound().build();

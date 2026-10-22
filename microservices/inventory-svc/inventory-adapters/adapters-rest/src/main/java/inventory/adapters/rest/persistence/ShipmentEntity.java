@@ -4,6 +4,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.time.Instant;
 import inventory.domain.Shipment;
 
@@ -24,6 +25,15 @@ public class ShipmentEntity {
 
     @Column(nullable = false)
     private String items;
+
+    /**
+     * Optimistic concurrency (quality review): a pack computed off a pre-ship
+     * snapshot cannot regress SHIPPED -> PACKED — the stale write fails at
+     * flush instead of blindly overwriting.
+     */
+    @Version
+    @Column(name = "version", nullable = false)
+    private long version;
 
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt = Instant.now();

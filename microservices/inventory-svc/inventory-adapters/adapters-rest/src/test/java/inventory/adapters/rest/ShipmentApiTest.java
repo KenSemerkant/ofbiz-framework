@@ -152,6 +152,87 @@ class ShipmentApiTest {
         assertEquals(404, post("/api/v1/shipments/nope/ship", "").statusCode());
     }
 
+    /**
+     * Quality review: a pack computed off a stale (pre-ship) snapshot must
+     * never regress SHIPPED -> PACKED. The @Version on shipments makes the
+     * stale write fail at flush; after retrying from fresh state the domain
+     * guard rejects it. Racing packs and a ship on a CREATED shipment: once a
+     * ship succeeds, the final status must still be SHIPPED.
+     */
+    @Test
+    void concurrentPackAndShipCannotRegressStatus() throws Exception {
+        for (int round = 0; round < 5; round++) {
+            String shipmentId = "SH-RACE-" + round;
+            assertEquals(201, post("/api/v1/shipments",
+                "{\"shipmentId\":\"" + shipmentId + "\"}").statusCode());
+
+            var executor = java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor();
+            var start = new java.util.concurrent.CountDownLatch(1);
+            var packs = new java.util.ArrayList<java.util.concurrent.Future<Integer>>();
+            for (int i = 0; i < 4; i++) {
+                packs.add(executor.submit(() -> {
+                    start.await();
+                    return post("/api/v1/shipments/" + shipmentId + "/pack", "").statusCode();
+                }));
+            }
+            // the ship races the packs; it can only 200 from PACKED state
+            java.util.concurrent.Future<Integer> ship = executor.submit(() -> {
+                start.await();
+                return post("/api/v1/shipments/" + shipmentId + "/ship", "").statusCode();
+            });
+            start.countDown();
+            boolean shipped = ship.get(30, java.util.concurrent.TimeUnit.SECONDS) == 200;
+            for (java.util.concurrent.Future<Integer> pack : packs) {
+                org.junit.jupiter.api.Assertions.assertNotEquals(500,
+                    pack.get(30, java.util.concurrent.TimeUnit.SECONDS),
+                    "conflict must map to 409, not 500");
+            }
+            executor.shutdown();
+            String finalStatus = new tools.jackson.databind.ObjectMapper()
+                .readTree(get("/api/v1/shipments/" + shipmentId).body())
+                .path("status").asText();
+            // the regression property: once shipped, always shipped
+            if (shipped) {
+                org.junit.jupiter.api.Assertions.assertEquals("SHIPPED", finalStatus,
+                    "status regressed after a successful ship");
+            }
+            org.junit.jupiter.api.Assertions.assertTrue(
+                finalStatus.equals("PACKED") || finalStatus.equals("SHIPPED"),
+                "final status must be a legal forward state, was " + finalStatus);
+        }
+    }
+
+    /** Quality review: duplicate-id create race → one 201, one 409, one row. */
+    @Test
+    void duplicateCreateRaceYieldsExactlyOneRow() throws Exception {
+        var executor = java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor();
+        var start = new java.util.concurrent.CountDownLatch(1);
+        var results = new java.util.ArrayList<java.util.concurrent.Future<Integer>>();
+        for (int i = 0; i < 2; i++) {
+            results.add(executor.submit(() -> {
+                start.await();
+                return post("/api/v1/shipments", "{\"shipmentId\":\"SH-DUP-RACE\"}")
+                    .statusCode();
+            }));
+        }
+        start.countDown();
+        int created = 0;
+        int conflicts = 0;
+        for (java.util.concurrent.Future<Integer> result : results) {
+            int status = result.get(30, java.util.concurrent.TimeUnit.SECONDS);
+            if (status == 201) {
+                created++;
+            } else {
+                assertEquals(409, status, "duplicate race must conflict, not " + status);
+                conflicts++;
+            }
+        }
+        executor.shutdown();
+        assertEquals(1, created);
+        assertEquals(1, conflicts);
+        assertEquals(200, get("/api/v1/shipments/SH-DUP-RACE").statusCode());
+    }
+
     @Test
     void shipmentPayloadEscapesHostileFields() throws Exception {
         assertEquals(201, post("/api/v1/shipments",

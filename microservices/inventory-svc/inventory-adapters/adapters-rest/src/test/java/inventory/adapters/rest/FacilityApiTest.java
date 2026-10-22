@@ -100,4 +100,35 @@ class FacilityApiTest {
         assertEquals(400, postFacility(
             "{\"facilityId\":\"WH1\",\"facilityName\":\" \"}").statusCode());
     }
+
+    /**
+     * Quality review: two racing first-upserts of the same id must not emit
+     * two created events — the loser gets a 409 (PK race), never a 500.
+     */
+    @Test
+    void racingFirstUpsertsEmitExactlyOneCreatedEvent() throws Exception {
+        var executor = java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor();
+        var start = new java.util.concurrent.CountDownLatch(1);
+        var results = new java.util.ArrayList<java.util.concurrent.Future<Integer>>();
+        for (int i = 0; i < 2; i++) {
+            results.add(executor.submit(() -> {
+                start.await();
+                return postFacility(
+                    "{\"facilityId\":\"RACE-WH\",\"facilityName\":\"Racer\"}").statusCode();
+            }));
+        }
+        start.countDown();
+        for (java.util.concurrent.Future<Integer> result : results) {
+            int status = result.get(30, java.util.concurrent.TimeUnit.SECONDS);
+            org.junit.jupiter.api.Assertions.assertTrue(status == 201 || status == 409,
+                "racing upsert must succeed or conflict, not " + status);
+        }
+        executor.shutdown();
+
+        assertEquals(1, outbox.findAll().stream()
+            .filter(e -> "RACE-WH".equals(e.getAggregateKey())
+                && "inventory.facility.created.v1".equals(e.getEventType()))
+            .count(), "exactly one created event regardless of race outcome");
+        assertEquals(200, getFacility("RACE-WH").statusCode());
+    }
 }
