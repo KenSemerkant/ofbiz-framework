@@ -1,0 +1,42 @@
+package product.application;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+import org.junit.jupiter.api.Test;
+import product.domain.Store;
+
+/** AC: store settings read/write through the port. */
+class StoreServiceTest {
+
+    private final Map<String, Store> storeData = new HashMap<>();
+    private final StoreService service = new StoreService(
+        new Stores() {
+            @Override
+            public Optional<Store> find(String productStoreId) {
+                return Optional.ofNullable(storeData.get(productStoreId));
+            }
+
+            @Override
+            public void save(Store store) {
+                storeData.put(store.productStoreId(), store);
+            }
+        });
+
+    @Test
+    void upsertThenGetRoundtrip() {
+        service.upsert(new Store("SHOP", "Web Store", "USD", "WH1"));
+        assertEquals("Web Store", service.get("SHOP").orElseThrow().storeName());
+
+        service.upsert(new Store("SHOP", "Retail Store", "EUR", null));
+        assertEquals("EUR", service.get("SHOP").orElseThrow().defaultCurrencyUomId());
+    }
+
+    @Test
+    void unknownStoreIsEmpty() {
+        assertTrue(service.get("nope").isEmpty());
+    }
+}

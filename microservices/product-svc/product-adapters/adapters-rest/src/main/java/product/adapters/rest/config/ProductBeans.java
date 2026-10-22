@@ -33,4 +33,9 @@ public class ProductBeans {
     CategoryService categoryService(CategoryStore store, OutboxWriter outbox) {
         return new CategoryService(store, outbox);
     }
+
+    @Bean
+    product.application.StoreService storeService(product.application.Stores stores) {
+        return new product.application.StoreService(stores);
+    }
 }
