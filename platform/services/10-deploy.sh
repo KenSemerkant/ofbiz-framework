@@ -232,8 +232,8 @@ helm -n "${NS}" upgrade --install order-svc "${CHART}" \
   ${TLS_ARGS_ORDER} \
   --set-string 'env[0].name=SPRING_PROFILES_ACTIVE' --set-string 'env[0].value=prod' \
   --set-string "env[1].name=ORDER_DB_URL" --set-string "env[1].value=jdbc:postgresql://${POSTGRES}/orderdb" \
-  --set-string 'env[2].name=ORDER_DB_USER' --set-string 'env[2].value=order' \
-  --set-string 'env[3].name=ORDER_DB_PASSWORD' --set-string 'env[3].value=order' \
+  --set-string 'env[2].name=ORDER_DB_USER' --set-string 'env[2].value=orderdb' \
+  --set-string 'env[3].name=ORDER_DB_PASSWORD' --set-string 'env[3].value=orderdb' \
   --set-string "env[4].name=KAFKA_BOOTSTRAP_SERVERS" --set-string "env[4].value=${KAFKA}" \
   --set-string "env[5].name=ORDER_PARTY_BASE_URL" --set-string "env[5].value=http://party-svc.${NS}.svc:8080" \
   --set-string "env[6].name=ORDER_PRODUCT_BASE_URL" --set-string "env[6].value=http://product-svc.${NS}.svc:8080" \

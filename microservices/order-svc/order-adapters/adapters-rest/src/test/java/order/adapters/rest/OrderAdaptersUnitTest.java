@@ -82,21 +82,21 @@ class OrderAdaptersUnitTest {
                 applied_at timestamptz not null default now())
             """);
         db.execute("""
-            create table ORDER_HEADER (ORDER_ID varchar(255) primary key,
-                CUSTOMER_ID varchar(255) not null, STATUS_ID varchar(32) not null,
-                CURRENCY_UOM varchar(20) not null, GRAND_TOTAL numeric(18,2) not null)
+            create table "ORDER_HEADER" ("ORDER_ID" varchar(255) primary key,
+                "CUSTOMER_ID" varchar(255) not null, "STATUS_ID" varchar(32) not null,
+                "CURRENCY_UOM" varchar(20) not null, "GRAND_TOTAL" numeric(18,2) not null)
             """);
         db.execute("""
-            create table ORDER_ITEM (ORDER_ID varchar(255) not null,
-                ORDER_ITEM_SEQ_ID varchar(20) not null, PRODUCT_ID varchar(255) not null,
-                QUANTITY numeric(18,3) not null, UNIT_PRICE numeric(18,2) not null,
-                UNIT_LIST_PRICE numeric(18,2) not null,
-                primary key (ORDER_ID, ORDER_ITEM_SEQ_ID))
+            create table "ORDER_ITEM" ("ORDER_ID" varchar(255) not null,
+                "ORDER_ITEM_SEQ_ID" varchar(20) not null, "PRODUCT_ID" varchar(255) not null,
+                "QUANTITY" numeric(18,3) not null, "UNIT_PRICE" numeric(18,2) not null,
+                "UNIT_LIST_PRICE" numeric(18,2) not null,
+                primary key ("ORDER_ID", "ORDER_ITEM_SEQ_ID"))
             """);
         db.execute("""
-            create table ORDER_STATUS_HISTORY (ORDER_ID varchar(255) not null,
-                STATUS_ID varchar(32) not null, NOTE varchar(255),
-                CHANGED_AT timestamptz not null default now())
+            create table "ORDER_STATUS_HISTORY" ("ORDER_ID" varchar(255) not null,
+                "STATUS_ID" varchar(32) not null, "NOTE" varchar(255),
+                "CHANGED_AT" timestamptz not null default now())
             """);
     }
 
@@ -138,7 +138,8 @@ class OrderAdaptersUnitTest {
         writer.upsertHeader("ORDER-M1", "CUST-1", "CREATED", "USD", "19.98");
         writer.upsertHeader("ORDER-M1", "CUST-1", "APPROVED", "USD", "19.98");
         assertEquals("APPROVED", db.queryForObject(
-            "select STATUS_ID from ORDER_HEADER where ORDER_ID = 'ORDER-M1'", String.class));
+            "select \"STATUS_ID\" from \"ORDER_HEADER\" where \"ORDER_ID\" = 'ORDER-M1'",
+            String.class));
         writer.upsertItems("ORDER-M1", List.of(
             new order.adapters.rest.persistence.OrderJson.LineDto("00001", "PROD-1", "WH",
                 BigDecimal.ONE, new BigDecimal("9.99"), "USD")));
@@ -146,10 +147,10 @@ class OrderAdaptersUnitTest {
             new order.adapters.rest.persistence.OrderJson.LineDto("00001", "PROD-1", "WH",
                 new BigDecimal("2"), new BigDecimal("9.99"), "USD")));
         assertEquals(0, new BigDecimal("2").compareTo(db.queryForObject(
-            "select QUANTITY from ORDER_ITEM where ORDER_ID = 'ORDER-M1'", BigDecimal.class)));
+            "select \"QUANTITY\" from \"ORDER_ITEM\" where \"ORDER_ID\" = 'ORDER-M1'", BigDecimal.class)));
         writer.appendHistory("ORDER-M1", "APPROVED", "approved");
         assertEquals(1, db.queryForObject(
-            "select count(*) from ORDER_STATUS_HISTORY where ORDER_ID = 'ORDER-M1'",
+            "select count(*) from \"ORDER_STATUS_HISTORY\" where \"ORDER_ID\" = 'ORDER-M1'",
             Integer.class));
     }
 
@@ -178,9 +179,9 @@ class OrderAdaptersUnitTest {
             "{\"orderId\":\"ORDER-M2\",\"customerId\":\"CUST-2\",\"status\":\"APPROVED\","
                 + "\"grandTotal\":\"9.99\",\"currency\":\"USD\",\"note\":\"approved\"}");
         assertEquals("APPROVED", db.queryForObject(
-            "select STATUS_ID from ORDER_HEADER where ORDER_ID = 'ORDER-M2'", String.class));
+            "select \"STATUS_ID\" from \"ORDER_HEADER\" where \"ORDER_ID\" = 'ORDER-M2'", String.class));
         assertEquals(2, db.queryForObject(
-            "select count(*) from ORDER_STATUS_HISTORY where ORDER_ID = 'ORDER-M2'",
+            "select count(*) from \"ORDER_STATUS_HISTORY\" where \"ORDER_ID\" = 'ORDER-M2'",
             Integer.class));
     }
 

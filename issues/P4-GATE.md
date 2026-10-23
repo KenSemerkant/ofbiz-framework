@@ -1,6 +1,20 @@
 # P4-GATE — order-svc (Phase 4)
 
-Date: 2026-10-22/23. Status: **code complete + CI-green; staging gate runs BLOCKED on the local Docker-VM disk (details below)**.
+Date: 2026-10-22/23. Status: **PASSED 2026-10-23** (local kind staging).
+
+## Gate evidence (2026-10-23)
+
+- `platform/services/70-order-lifecycle.sh` → **ORDER LIFECYCLE E2E PASSED**: quote→order (live price snapshot 11.00 = catalog price from product-svc), ECA on `order.order.placed.v1` (inventory ATP 10→8 = reserve; `order.order.invoicerequested.v1` outbox row = invoice trigger; attribution count ≥1 for CG4-PROMO), typed 409 on the illegal transition shortcut, approve→complete, reverse-sync carried the order to monolith `ORDER_HEADER` status=COMPLETED.
+- `platform/cdc/33-check-order-consistency.sh` → **DELTA 0 — CONSISTENT** (monolith=order-svc=4 rows, checksums 5dacb43f67ac/5dacb43f67ac).
+- `platform/cdc/65-rollback-drill-order.sh` → **PASSED** (monolith-side write streamed back into order-svc's `monolith_order_projection` in ~2s via the `monolith-order` CDC connector — zero data loss both directions; drill rows cleaned up).
+- Staging write-cutover: gateway routes `/api/v1/orders|quotes|returns|attributions/**` to order-svc (role-gated); monolith ORDER_* tables receive reverse-sync only. **30-day soak started 2026-10-23**; prod cutover remains gated on it (calendar time — same as every prior phase's prod flip).
+- CDC: `monolith-order` connector RUNNING, unique slot/publication (`debezium_order`/`pub_debezium_order`).
+
+## Incident + remediation during the gate run (local profile)
+
+1. Docker-VM disk (62.7G) hit capacity (P1 KNOWN-ISSUE recurrence): order-svc Tomcat tmpdir ENOSPC; brokers crash-looped (log dirs marked offline). Remediation: freed ~10G (host build cache + stray images, stale in-node `import-*` garbage via `crictl rmi --prune`), broker pods recovered via CrashLoop restarts with free disk.
+2. Kafka Connect worker group `cdc-connect` wedged post-crash: its consumer-group coordinator partition (`__consumer_offsets-49`) lost 2/3 ISR and the coordinator stayed unavailable → all Debezium tasks starved (replication slots inactive). Remediation: renamed the worker group (`cdc-connect2` → different coordinator partition, `kafka-connect.yaml`) — slots active, all four connectors RUNNING.
+3. Reverse-sync writer SQL: unquoted identifiers folded lowercase vs the quoted-uppercase monolith DDL — fixed by quoting (plus `excluded."COL"` in the ON CONFLICT updates).
 
 ## Built
 
@@ -26,24 +40,8 @@ Date: 2026-10-22/23. Status: **code complete + CI-green; staging gate runs BLOCK
 
 - Order topics + DLQs + `kafkauser/order-svc` — applied, Ready.
 - Monolith order slice DDL — applied; `monolith-order` Debezium connector — RUNNING.
-- `orderdb` database + `order-svc` release deployed; pods schedule but the app container dies: **"No space left on device"** creating the Tomcat temp dir.
+- `orderdb` database + `order-svc` release — deployed, 2/2 Running.
 
-## BLOCKED: local Docker-VM disk (P1 KNOWN-ISSUE recurrence, worse)
-
-The kind cluster's containerd image set (every image on every node) + the platform PVs now need ≈2-3G more than the 62.7G Docker Desktop VM disk provides. Already freed this session: host build cache + stray images (~9G), stale in-node `import-*` images. Remaining options need either a user action or workload changes the session's permission guard blocked:
-
-1. **Enlarge the Docker Desktop disk** (Settings → Resources → Disk ≥ 100G) — cleanest; then `sh platform/services/10-deploy.sh` and run the drills below.
-2. Or approve scaling `opensearch` (observability) to 0 + restarting the three crash-looping Kafka broker pods (their log dirs were marked offline by the ENOSPC event; data intact; pod recreation clears it) — frees ~1.5G, enough for the gate run.
-
-## Pending gate runs (scripts ready, execute after the disk is fixed)
-
-```
-sh platform/services/10-deploy.sh                 # order-svc Ready
-sh platform/services/70-order-lifecycle.sh        # CG-4 lifecycle e2e + ECA + attribution + reverse-sync
-sh platform/cdc/33-check-order-consistency.sh     # delta 0
-sh platform/cdc/65-rollback-drill-order.sh        # rollback drill
-```
-
-Note on CG-4 item 3 ("monolith order writes disabled in staging; 30-day soak before prod cutover"): staging write-cutover is done by construction (gateway routes order API to order-svc; monolith order tables receive reverse-sync only). The 30-day soak is calendar time — it starts when the above staging runs pass; prod cutover remains gated on it.
+Note on CG-4 item 3 ("monolith order writes disabled in staging; 30-day soak before prod cutover"): staging write-cutover is done by construction (gateway routes order API to order-svc; monolith order tables receive reverse-sync only). The 30-day soak is calendar time — started 2026-10-23; prod cutover remains gated on it.
 
 Interpretation note: the CG-4 "invoice trigger" ECA fires as `order.order.invoicerequested.v1`; billing-svc lands in Phase 5 and will consume it (event now, consumer in P5 — same pattern as P3's forward event contracts).

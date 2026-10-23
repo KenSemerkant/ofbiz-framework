@@ -24,23 +24,23 @@ public class JdbcMonolithOrderSyncWriter {
     public void upsertHeader(String orderId, String customerId, String status,
             String currency, String grandTotal) {
         monolith.update("""
-            insert into ORDER_HEADER (ORDER_ID, CUSTOMER_ID, STATUS_ID, CURRENCY_UOM, GRAND_TOTAL)
+            insert into "ORDER_HEADER" ("ORDER_ID", "CUSTOMER_ID", "STATUS_ID", "CURRENCY_UOM", "GRAND_TOTAL")
             values (?, ?, ?, ?, ?)
-            on conflict (ORDER_ID) do update set
-                STATUS_ID = excluded.STATUS_ID,
-                GRAND_TOTAL = excluded.GRAND_TOTAL
+            on conflict ("ORDER_ID") do update set
+                "STATUS_ID" = excluded."STATUS_ID",
+                "GRAND_TOTAL" = excluded."GRAND_TOTAL"
             """, orderId, customerId, status, currency, new java.math.BigDecimal(grandTotal));
     }
 
     public void upsertItems(String orderId, List<OrderJson.LineDto> lines) {
         for (OrderJson.LineDto line : lines) {
             monolith.update("""
-                insert into ORDER_ITEM (ORDER_ID, ORDER_ITEM_SEQ_ID, PRODUCT_ID, QUANTITY,
-                    UNIT_PRICE, UNIT_LIST_PRICE)
+                insert into "ORDER_ITEM" ("ORDER_ID", "ORDER_ITEM_SEQ_ID", "PRODUCT_ID", "QUANTITY",
+                    "UNIT_PRICE", "UNIT_LIST_PRICE")
                 values (?, ?, ?, ?, ?, ?)
-                on conflict (ORDER_ID, ORDER_ITEM_SEQ_ID) do update set
-                    QUANTITY = excluded.QUANTITY,
-                    UNIT_PRICE = excluded.UNIT_PRICE
+                on conflict ("ORDER_ID", "ORDER_ITEM_SEQ_ID") do update set
+                    "QUANTITY" = excluded."QUANTITY",
+                    "UNIT_PRICE" = excluded."UNIT_PRICE"
                 """, orderId, line.orderItemSeqId(), line.productId(), line.quantity(),
                 line.unitPrice(), line.unitPrice());
         }
@@ -48,7 +48,7 @@ public class JdbcMonolithOrderSyncWriter {
 
     public void appendHistory(String orderId, String status, String note) {
         monolith.update("""
-            insert into ORDER_STATUS_HISTORY (ORDER_ID, STATUS_ID, NOTE, CHANGED_AT)
+            insert into "ORDER_STATUS_HISTORY" ("ORDER_ID", "STATUS_ID", "NOTE", "CHANGED_AT")
             values (?, ?, ?, now())
             """, orderId, status, note);
     }

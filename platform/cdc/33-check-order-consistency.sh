@@ -17,8 +17,8 @@ MONO_SUM=$(psql_monolith "
   SELECT coalesce(md5(string_agg(row_text, chr(10) ORDER BY row_text)), 'empty') FROM (
     SELECT h.\"ORDER_ID\" || '|' || h.\"CUSTOMER_ID\" || '|' || h.\"STATUS_ID\"
            || '|' || h.\"CURRENCY_UOM\" || '|' || h.\"GRAND_TOTAL\"::text
-           || '|' || coalesce((SELECT string_agg(i.\"PRODUCT_ID\" || '/' || i.\"QUANTITY\"
-                                 ORDER BY i.\"ORDER_ITEM_SEQ_ID\"), ',')
+           || '|' || coalesce((SELECT string_agg(i.\"PRODUCT_ID\" || '/' || i.\"QUANTITY\", ','
+                                 ORDER BY i.\"ORDER_ITEM_SEQ_ID\")
                                  FROM \"ORDER_ITEM\" i WHERE i.\"ORDER_ID\" = h.\"ORDER_ID\"),'')
            AS row_text
     FROM \"ORDER_HEADER\" h
@@ -27,8 +27,8 @@ SVC_SUM=$(psql_order "
   SELECT coalesce(md5(string_agg(row_text, chr(10) ORDER BY row_text)), 'empty') FROM (
     SELECT o.order_id || '|' || o.customer_id || '|' || o.status || '|'
            || o.currency_uom_id || '|' || o.grand_total::text
-           || '|' || coalesce((SELECT string_agg((line->>'productId') || '/' || (line->>'quantity')
-                                 ORDER BY line->>'orderItemSeqId'), ',')
+           || '|' || coalesce((SELECT string_agg((line->>'productId') || '/' || (line->>'quantity'), ','
+                                 ORDER BY line->>'orderItemSeqId')
                                  FROM jsonb_array_elements(o.lines::jsonb) line), '')
            AS row_text
     FROM orders o

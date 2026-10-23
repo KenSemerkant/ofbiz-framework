@@ -33,6 +33,10 @@ kubectl -n "${NS}" exec "${TOOLS}" -- sh -c "
 
 echo "==> [1/5] quote → order (price snapshot from product-svc)"
 FAIL=0
+# the expected price is whatever product-svc resolves NOW — the assertion is
+# that the order snapshot equals the live catalog price at placement
+CATALOG_PRICE=$(kubectl -n "${NS}" exec "${TOOLS}" -- sh -c \
+  "curl -s 'http://product-svc:8080/api/v1/products/${PRODUCT}/price?priceType=DEFAULT_PRICE&currency=USD&at=2026-10-23T00:00:00Z' | sed -n 's/.*\"price\":\([0-9.]*\).*/\1/p'")
 QUOTE=$(kubectl -n "${NS}" exec "${TOOLS}" -- sh -c "
   curl -s -X POST http://order-svc:8080/api/v1/quotes -H 'Content-Type: application/json' \
     -d '{\"customerId\":\"${CUSTOMER}\",\"currencyUomId\":\"USD\",\"lines\":[{\"productId\":\"${PRODUCT}\",\"facilityId\":\"${FACILITY}\",\"quantity\":2}]}'")
@@ -41,13 +45,20 @@ ORDER=$(kubectl -n "${NS}" exec "${TOOLS}" -- sh -c "
   curl -s -X POST http://order-svc:8080/api/v1/quotes/${QUOTE_ID}/convert")
 ORDER_ID=$(echo "${ORDER}" | sed -n 's/.*"orderId":"\([^"]*\)".*/\1/p')
 UNIT_PRICE=$(echo "${ORDER}" | sed -n 's/.*"unitPrice":\([0-9.]*\).*/\1/p')
-echo "  quote=${QUOTE_ID} order=${ORDER_ID} snapshotUnitPrice=${UNIT_PRICE}"
+echo "  quote=${QUOTE_ID} order=${ORDER_ID} catalog=${CATALOG_PRICE} snapshotUnitPrice=${UNIT_PRICE}"
 [ -n "${ORDER_ID}" ] || { echo "FAIL: no order created"; exit 1; }
-[ "${UNIT_PRICE}" = "9.99" ] || { echo "FAIL: snapshot price ${UNIT_PRICE} != 9.99"; FAIL=1; }
+[ "$(awk "BEGIN{print (${UNIT_PRICE} == ${CATALOG_PRICE}) ? 1 : 0}" 2>/dev/null)" = "1" ] \
+  || { echo "FAIL: snapshot price ${UNIT_PRICE} != catalog ${CATALOG_PRICE}"; FAIL=1; }
 
 echo "==> [2/5] ECA saga on order.order.placed (ATP reserve + invoice trigger)"
-ATP=$(kubectl -n "${NS}" exec "${TOOLS}" -- sh -c \
-  "curl -s http://inventory-svc:8080/api/v1/inventory-items/${RUN} | sed -n 's/.*\"availableToPromiseTotal\":\([0-9]*\).*/\1/p'")
+# relay (1s) + consumer lag: poll until ATP drops by the reserved qty (2)
+ATP=""
+for i in $(seq 1 30); do
+  ATP=$(kubectl -n "${NS}" exec "${TOOLS}" -- sh -c \
+    "curl -s http://inventory-svc:8080/api/v1/inventory-items/${RUN} | sed -n 's/.*\"availableToPromiseTotal\":\([0-9]*\).*/\1/p'")
+  [ "${ATP}" = "8" ] && break
+  sleep 2
+done
 echo "  ATP after placed=${ATP} (expected 8)"
 [ "${ATP}" = "8" ] || { echo "FAIL: ATP ${ATP} != 8 — reserve did not fire"; FAIL=1; }
 

@@ -28,7 +28,7 @@ spec:
           image: quay.io/debezium/connect:3.0.2.Final
           env:
             - {name: BOOTSTRAP_SERVERS, value: "ofbiz-kafka-bootstrap:9092"}
-            - {name: GROUP_ID, value: cdc-connect}
+            - {name: GROUP_ID, value: cdc-connect2}
             - {name: CONFIG_STORAGE_TOPIC, value: cdc-connect-configs}
             - {name: OFFSET_STORAGE_TOPIC, value: cdc-connect-offsets}
             - {name: STATUS_STORAGE_TOPIC, value: cdc-connect-status}

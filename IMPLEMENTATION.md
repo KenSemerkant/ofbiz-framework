@@ -162,20 +162,20 @@ Evidence: `platform/observability/20-verify.sh` → ALL CHECKS PASSED.
 
 # PHASE 4 — order-svc
 
-**CG-4:** PARTIAL — code + tests complete and green; staging drills written but BLOCKED on the local Docker-VM disk (P1 KNOWN-ISSUE recurrence; see issues/P4-GATE.md)
-- [ ] Full order lifecycle (quote→order→approve→complete/cancel) via new stack in staging e2e test — drill ready: `platform/services/70-order-lifecycle.sh`; lifecycle proven at API level (`OrderApiTest`), on-cluster run pending disk fix
-- [~] ECA-derived sagas: inventory reserve, invoice trigger, marketing attribution all fire on `order.order.placed` — implemented + unit/integration-proven; invoice trigger fires as `order.order.invoicerequested.v1` (billing-svc consumes in P5); on-cluster evidence pending disk fix
-- [~] Monolith order writes disabled in staging (gateway routes order API to order-svc; monolith ORDER_* tables receive reverse-sync only — done by construction); 30-day soak before prod cutover is calendar time, starts when the staging runs pass
-- [ ] Consistency delta 0 vs monolith order tables; rollback drill done — scripts ready (`33-check-order-consistency.sh`, `65-rollback-drill-order.sh`), runs pending disk fix
+**CG-4:** PASSED 2026-10-23 (local kind staging; evidence: issues/P4-GATE.md)
+- [x] Full order lifecycle (quote→order→approve→complete/cancel) via new stack in staging e2e test — `platform/services/70-order-lifecycle.sh` PASSED (quote→order with live price snapshot 11.00=catalog, ECA reserve ATP 10→8, typed 409 on illegal shortcut, COMPLETED, reverse-sync monolith status=COMPLETED)
+- [x] ECA-derived sagas: inventory reserve, invoice trigger, marketing attribution all fire on `order.order.placed` — on-cluster: ATP drop + `order.order.invoicerequested.v1` outbox row + attribution count 1 (drill §2/§4); invoice trigger fires as `order.order.invoicerequested.v1` (billing-svc consumes in P5)
+- [x] Monolith order writes disabled in staging (gateway routes order API to order-svc; monolith ORDER_* tables receive reverse-sync only); 30-day soak before prod cutover started 2026-10-23 (prod flip remains gated on it — calendar time)
+- [x] Consistency delta 0 vs monolith order tables; rollback drill done — `33-check-order-consistency.sh` DELTA 0 (checksums 5dacb43f67ac/5dacb43f67ac), `65-rollback-drill-order.sh` PASSED (monolith-side write CDC'd into order-svc projection in ~2s, zero data loss)
 
 ## P4-F1 order domain
 - **S1 (L):** Order aggregate + status machine (enum-guarded transitions). AC: [x] illegal transition rejected with typed error [x] history appended per transition [x] events per state change. Evidence: `OrderTest`, `OrderStatusReturnGuardsTest`, `OrderApiTest` (409 on illegal transition, history endpoint, ordered outbox events); ./gradlew check green.
-- **S2 (M):** Cart → order placement (price snapshot from product API/events). AC: [x] order stores immutable price snapshot [x] stock check via inventory reservation. Evidence: `PlaceOrderSagaTest`, `OrderApiTest.priceSnapshotIsImmutableAgainstLaterPriceChanges`; reserve step in `OrderEcaServiceTest`.
+- **S2 (M):** Cart → order placement (price snapshot from product API/events). AC: [x] order stores immutable price snapshot [x] stock check via inventory reservation. Evidence: `PlaceOrderSagaTest`, `OrderApiTest.priceSnapshotIsImmutableAgainstLaterPriceChanges`; reserve step in `OrderEcaServiceTest` + on-cluster drill §2.
 - **S3 (M):** Returns + adjustments. AC: [x] return creation adjusts inventory (saga) [x] credit memo event emitted. Evidence: `ServiceSuiteTest.returnAdjustsInventoryAndEmitsCreditMemo`, `OrderApiTest.fullLifecycleQuoteToOrderToComplete` (return 201 + `order.creditmemo.issued.v1` outbox row; 409 before COMPLETED).
-- **S4 (S):** Quotes. AC: [x] quote→order conversion preserves line data. Evidence: `QuoteReturnTest.conversionPreservesLineDataExactly`, `OrderApiTest` (same price/qty/seq after convert; re-convert 409).
+- **S4 (S):** Quotes. AC: [x] quote→order conversion preserves line data. Evidence: `QuoteReturnTest.conversionPreservesLineDataExactly`, `OrderApiTest` (same price/qty/seq after convert; re-convert 409) + drill §1.
 ## P4-F2 integrations (sagas)
 - **S1 (M):** placeOrder saga orchestrator (reserve stock, validate party, emit placed). AC: [x] compensation on partial failure [x] saga state persisted + resumable after restart. Evidence: `OrderEcaServiceTest` (partial-failure release + COMPENSATED marker; redelivery no-op; restart resume of a PLACED saga), guarded markers in `JdbcSagaStore` proven on real Postgres (`OrderAdaptersUnitTest`).
-- **S2 (S):** Marketing attribution consumer. AC: [x] tracking-code attribution recorded on placed orders. Evidence: `OrderConsumers` attribution listener + `ServiceSuiteTest.attributionRecordsOnlyCodedOrders`; count endpoint asserted in `OrderApiTest`.
+- **S2 (S):** Marketing attribution consumer. AC: [x] tracking-code attribution recorded on placed orders. Evidence: on-cluster drill §4 (attribution count 1 for CG4-PROMO); `ServiceSuiteTest.attributionRecordsOnlyCodedOrders`; count endpoint asserted in `OrderApiTest`.
 
 ---
 
