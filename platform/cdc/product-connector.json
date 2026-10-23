@@ -9,6 +9,8 @@
     "database.dbname": "ofbiz",
     "plugin.name": "pgoutput",
     "topic.prefix": "ofbiz-product",
+    "slot.name": "debezium_product",
+    "publication.name": "pub_debezium_product",
     "table.include.list": "public.PRODUCT,public.PRODUCT_CATEGORY,public.PRODUCT_CATEGORY_MEMBER,public.PRODUCT_PRICE,public.PRODUCT_ASSOC",
     "snapshot.mode": "initial",
     "snapshot.fetch.size": "1000",

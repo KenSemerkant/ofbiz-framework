@@ -9,6 +9,8 @@
     "database.dbname": "ofbiz",
     "plugin.name": "pgoutput",
     "topic.prefix": "ofbiz-shipment",
+    "slot.name": "debezium_shipment",
+    "publication.name": "pub_debezium_shipment",
     "table.include.list": "public.SHIPMENT,public.SHIPMENT_ITEM",
     "snapshot.mode": "initial",
     "snapshot.fetch.size": "1000",
