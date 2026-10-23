@@ -181,11 +181,11 @@ Evidence: `platform/observability/20-verify.sh` → ALL CHECKS PASSED.
 
 # PHASE 5 — billing-svc + finance-svc
 
-**CG-5:** PASSED 2026-10-23 with one infra-blocked item (local kind staging; evidence: issues/P5-GATE.md)
+**CG-5:** PASSED 2026-10-23 (local kind staging; evidence: issues/P5-GATE.md)
 - [x] SME-approved entity split (FUTURESTATE-LOWLEVEL §2.1) frozen in a migration mapping doc — billing-svc/MAPPING.md (99) + finance-svc/MAPPING.md (85), full 184-entity enumeration, crossover resolved per-entity
 - [x] Invoice issue→settle e2e; payment gateway adapter (test gateway) auth/capture/void — `platform/services/80-billing-lifecycle.sh` §2/§4/§5 PASS (invoicerequested→ISSUED, authorize→capture→SETTLED, void, typed 409)
 - [x] GL auto-posting from billing events; trial balance equals monolith trial balance on migrated dataset — e2e §7 (TB balanced, both auto-postings) + `35-check-finance-consistency.sh` PARITY (1100=175.50/0, 1200=225.50/175.50, 4000=0/225.50)
-- [x] PCI scope documented as confined to billing-svc (billing-svc/PCI-SCOPE.md); notification email delivery **BLOCKED by the local kind network fault** (issues/P5-GATE.md — pod-to-pod SMTP blackholed for every backend/client; path verified to JavaMail-send; P4 soak blocks cluster recreation)
+- [x] notification-svc sends invoice emails (`80-billing-lifecycle.sh` §3 "invoice email delivered (mailpit)" — eager client-first adapter around the local kind datapath fault, issues/P5-GATE.md); PCI scope documented as confined to billing-svc (billing-svc/PCI-SCOPE.md)
 
 ## P5-F1 billing-svc
 - **S1 (L):** Invoice aggregate + issue/post/settle. AC: [x] lifecycle states guarded [x] `billing.invoice.*` events [x] PDF render adapter. Evidence: InvoicePaymentGuardTest + BillingApiTest (409s, issue/settle/settled events in outbox, %PDF); MinimalPdfRenderer (dependency-free PDF 1.4).

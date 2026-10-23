@@ -154,11 +154,11 @@ helm -n "${NS}" upgrade --install notification-svc "${CHART}" \
   --set-string 'env[1].name=NOTIFICATION_DB_URL' --set-string "env[1].value=jdbc:postgresql://${POSTGRES}/notification" \
   --set-string 'env[2].name=NOTIFICATION_DB_USER' --set-string 'env[2].value=notification' \
   --set-string 'env[3].name=NOTIFICATION_DB_PASSWORD' --set-string 'env[3].value=notification' \
-  # P5: staging SMTP = host mailpit via the Docker Desktop gateway. The
-  # local kind network blackholes in-cluster SMTP delivery (issues/P5-GATE.md);
-  # cloud staging overrides P5_SMTP_HOST back to the in-cluster mailhog service.
-  --set-string 'env[4].name=SMTP_HOST' --set-string "env[4].value=${P5_SMTP_HOST:-192.168.65.254}" \
-  --set-string 'env[5].name=SMTP_PORT' --set-string 'env[5].value=1025' \
+  # P5: staging mail (mailpit) speaks SMTP on 8080 + the eager client-first
+  # adapter — the local kind datapath eats banner-first SMTP (issues/P5-GATE.md).
+  --set-string 'env[4].name=SMTP_HOST' --set-string "env[4].value=mailhog.${NS}.svc" \
+  --set-string 'env[5].name=SMTP_PORT' --set-string 'env[5].value=8080' \
+  --set-string 'env[9].name=NOTIFICATION_MAIL_EAGER' --set-string 'env[9].value=true' \
   --set-string 'env[6].name=SMTP_USER' --set-string 'env[6].value=' \
   --set-string 'env[7].name=SMTP_PASSWORD' --set-string 'env[7].value=' \
   --set-string "env[8].name=KAFKA_BOOTSTRAP_SERVERS" --set-string "env[8].value=${KAFKA}"

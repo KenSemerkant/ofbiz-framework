@@ -69,23 +69,23 @@ echo "${INVOICE}" | grep -q '"status":"ISSUED"' \
 echo "    invoice=${INVOICE_ID} ISSUED"
 
 echo "==> [3/7] notification-svc sent the invoice email"
-# P5 NOTE: the local kind cluster blackholes pod-to-pod TCP on non-service
-# ports (SMTP 1025 never reaches any in-cluster backend — see
-# issues/P5-GATE.md). Staging SMTP target is therefore the HOST mailpit
-# (docker run -p 127.0.0.1:1025:1025 axllent/mailpit) reached via the
-# Docker Desktop gateway; set P5_SKIP_EMAIL=1 to record the step as
-# BLOCKED-infra instead of failing the drill.
+# P5: mailpit (in-cluster) serves SMTP on 8080 and notification uses the
+# eager client-first adapter — the local kind datapath eats a server's
+# first unsolicited data packet, so banner-first SMTP blackholes
+# (issues/P5-GATE.md). P5_SKIP_EMAIL=1 stays as an escape hatch.
 if [ "${P5_SKIP_EMAIL:-0}" = "1" ]; then
-  echo "    SKIP-BLOCKED: in-cluster SMTP delivery broken by local kind network fault (issues/P5-GATE.md)"
+  echo "    SKIP: email check skipped by P5_SKIP_EMAIL=1"
 else
   EMAIL=""
   for i in $(seq 1 30); do
-    EMAIL=$(python3 -c "import json,urllib.request;d=json.load(urllib.request.urlopen('http://127.0.0.1:8035/api/v1/messages',timeout=3));print(sum(1 for m in d.get('messages',[]) if 'Invoice ${INVOICE_ID} issued' in (m.get('Subject') or '')))" 2>/dev/null || echo 0)
+    EMAIL=$(kubectl -n "${NS}" exec deploy/mailhog -- sh -c \
+      "wget -qO- 'http://localhost:8025/api/v1/messages?limit=50' 2>/dev/null" \
+      | grep -c "Invoice ${INVOICE_ID} issued" || true)
     [ "${EMAIL}" -ge 1 ] && break
     sleep 2
   done
-  [ "${EMAIL:-0}" -ge 1 ] || { echo "FAIL: invoice email not in host mailpit (127.0.0.1:8035)"; exit 1; }
-  echo "    invoice email delivered (host mailpit)"
+  [ "${EMAIL:-0}" -ge 1 ] || { echo "FAIL: invoice email not in mailpit"; exit 1; }
+  echo "    invoice email delivered (mailpit)"
 fi
 
 echo "==> [4/7] payment auth → capture → invoice settled"
@@ -134,9 +134,19 @@ for i in $(seq 1 30); do
 done
 [ -n "${DEBIT:-}" ] && [ "$(awk "BEGIN{print (${DEBIT} == ${CREDIT:-0}) ? 1 : 0}")" = "1" ] \
   || { echo "FAIL: trial balance not balanced: ${TB}"; exit 1; }
-ATT=$(X "curl -s http://finance-svc:8080/api/v1/gl/transactions/ATT-${INVOICE_ID}-issued")
+ATT=""
+for i in $(seq 1 30); do
+  ATT=$(X "curl -s http://finance-svc:8080/api/v1/gl/transactions/ATT-${INVOICE_ID}-issued")
+  echo "${ATT}" | grep -q '"posted":true' && break
+  sleep 2
+done
 echo "${ATT}" | grep -q '"posted":true' || { echo "FAIL: issued auto-posting missing: ${ATT}"; exit 1; }
-ATT2=$(X "curl -s http://finance-svc:8080/api/v1/gl/transactions/ATT-${INVOICE_ID}-settled")
+ATT2=""
+for i in $(seq 1 30); do
+  ATT2=$(X "curl -s http://finance-svc:8080/api/v1/gl/transactions/ATT-${INVOICE_ID}-settled")
+  echo "${ATT2}" | grep -q '"posted":true' && break
+  sleep 2
+done
 echo "${ATT2}" | grep -q '"posted":true' || { echo "FAIL: settled auto-posting missing: ${ATT2}"; exit 1; }
 echo "    auto-postings landed, TB balanced (debits=credits=${DEBIT:-?})"
 

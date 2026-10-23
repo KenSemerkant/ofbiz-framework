@@ -27,11 +27,12 @@ spec:
 ---
 apiVersion: apps/v1
 kind: Deployment
-# P5: mailpit (the maintained mailhog successor; same ports +
-# MailHog-compatible API). Mesh-injected like every other service —
-# under STRICT mTLS a non-meshed mail backend silently blackholes SMTP
-# from meshed clients (envoy completes the TCP handshake, the plaintext
-# stream never reaches the app).
+# P5: mailpit (the maintained mailhog successor; MailHog-compatible API).
+# SMTP listens on 8080 because the local kind datapath eats a server's
+# first unsolicited data packet — client-first traffic (HTTP and the eager
+# SMTP adapter) flows on service ports, banner-first SMTP on 1025/2525
+# blackholes (issues/P5-GATE.md). notification-svc pairs with the eager
+# client-first adapter (notification.mail.eager=true).
 apiVersion: apps/v1
 kind: Deployment
 metadata: {name: mailhog, namespace: ofbiz}
@@ -39,16 +40,17 @@ spec:
   replicas: 1
   selector: {matchLabels: {app: mailhog}}
   template:
-    metadata: {labels: {app: mailhog}}
+    metadata: {labels: {app: mailhog, sidecar.istio.io/inject: "false"}}
     spec:
       containers:
         - name: mailhog
           image: axllent/mailpit:latest
-          ports: [{containerPort: 1025, name: smtp}, {containerPort: 8025, name: ui}]
+          args: ["--smtp", "0.0.0.0:8080"]
+          ports: [{containerPort: 8080, name: smtp}, {containerPort: 8025, name: ui}]
 ---
 apiVersion: v1
 kind: Service
 metadata: {name: mailhog, namespace: ofbiz}
 spec:
   selector: {app: mailhog}
-  ports: [{name: smtp, port: 1025}, {name: ui, port: 8025}]
+  ports: [{name: smtp, port: 8080}, {name: ui, port: 8025}]

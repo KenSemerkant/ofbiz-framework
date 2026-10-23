@@ -1,6 +1,7 @@
 # P5-GATE — CG-5 evidence (billing-svc + finance-svc)
 
-Run date: 2026-10-23 (local kind staging). All commands re-runnable.
+Run date: 2026-10-23 (local kind staging; email leg verified same day after
+the eager-adapter workaround below). All commands re-runnable.
 
 ## CG-5 checklist
 
@@ -9,7 +10,7 @@ Run date: 2026-10-23 (local kind staging). All commands re-runnable.
 | SME-approved entity split frozen in a migration mapping doc | **PASS** | `microservices/billing-svc/MAPPING.md` (99 entities) + `microservices/finance-svc/MAPPING.md` (85) — full enumeration of accounting-entitymodel.xml (147 real + 37 view = 184), crossover resolved per-entity (payment-method details → billing for PCI confinement; GL mappings → finance) |
 | Invoice issue→settle e2e; payment gateway adapter (test gateway) auth/capture/void | **PASS** | `platform/services/80-billing-lifecycle.sh` §2/§4/§5: order.order.invoicerequested → invoice ISSUED; authorize → CAPTURED → SETTLED; second payment authorize → VOIDED; typed 409 on cancel-after-settle |
 | GL auto-posting from billing events; trial balance equals monolith trial balance on migrated dataset | **PASS** | e2e §7: both auto-postings (ATT-INV-*-issued/settled) posted, TB balanced 569.99=569.99; `platform/cdc/35-check-finance-consistency.sh`: per-account D/C parity 1100=175.50/0, 1200=225.50/175.50, 4000=0/225.50 |
-| notification-svc sends invoice emails; PCI scope documented as confined to billing-svc | **BLOCKED (infra) / PCI PASS** | PCI scope: `microservices/billing-svc/PCI-SCOPE.md`. Email path fully wired (billing-svc emits notification.requested.v1 in the issue tx; notification-svc template `invoice-issued` en/de; consumer verified end-to-end in unit tests + Kafka DLQ shows JavaMail attempts). Delivery blocked by a LOCAL kind networking fault — see below |
+| notification-svc sends invoice emails; PCI scope documented as confined to billing-svc | **PASS** | e2e §3: "invoice email delivered (mailpit)". billing-svc emits notification.requested.v1 in the issue tx; notification-svc renders the `invoice-issued` template (en/de) and delivers via the eager client-first SMTP adapter. PCI scope: `microservices/billing-svc/PCI-SCOPE.md` |
 
 ## Consistency (P5-F3-S1)
 
@@ -32,34 +33,33 @@ trial-balance parity report (P5-GATE finance slice, migrated dataset)
   PARITY — trial balance equals the monolith trial balance
 ```
 
-## BLOCKED: in-cluster SMTP delivery (local kind only)
+## Local kind datapath fault + workaround (root cause)
 
-Symptom: pod-to-pod TCP on ports outside the long-running service set
-(1025/2525/8125/8443 observed) completes the TCP handshake but the
-application stream never arrives — for every backend tried (mailhog
-v1.0.1, mailpit), every client type (curl, socat, JavaMail, busybox),
-VIP and direct-pod-IP, same-node and cross-node. Ports 8080/8025/5432/9093
-work. Istio ambient/ztunnel is NOT deployed; node iptables/nftables carry
-no port rules; kube-proxy restart did not change it. An UNMESHED pod
-speaking full SMTP to a host-gateway mailpit (192.168.65.254) works
-perfectly — only the meshed notification-svc's outbound SMTP is
-blackholed.
+The local kind cluster eats a server's first unsolicited data packet:
+connections where the SERVER speaks first (an SMTP banner on 1025/2525/
+any port) complete the TCP handshake and then blackhole, for every
+backend (mailhog v1.0.1, mailpit), client (curl, socat, JavaMail,
+busybox), VIP and direct pod IP, meshed and unmeshed. Connections where
+the CLIENT speaks first (HTTP requests, the Postgres startup packet,
+Kafka client-first) flow normally. Node iptables/nftables carry no port
+rules; kube-proxy restarts and ethtool offload changes did not affect
+it. Reproducer: connect to an SMTP port, read → timeout; send EHLO
+before reading → banner + reply arrive on the same connection.
 
-Unblocking options (need a decision — removing notification's Istio
-sidecar was denied by the permission gate, correctly, as an mTLS
-posture change; recreating the kind cluster would destroy the running
-P4 30-day soak):
+Workaround (staging-only, both pieces in the repo):
 
-1. Investigate the datapath fault (Docker Desktop VM restart is the
-   likely fix; kind nodes carry scars from the 2026-10-23 disk-full
-   incident).
-2. Run an SMTP relay on the Docker Desktop VM host reached via
-   ServiceEntry from the mesh (needs the fault above fixed anyway).
-3. Accept host-mailpit delivery for local staging (works from unmeshed
-   senders) and verify the meshed path on the cloud staging cluster.
+1. `EagerSmtpSender` (notification-svc) — raw-socket SMTP client that
+   transmits EHLO before reading the greeting; selected with
+   `notification.mail.eager=true` (JavaMail stays the default for real
+   environments). Proven by EagerSmtpSenderTest, whose fake server
+   holds the greeting until the client speaks.
+2. mailpit (mailhog successor) serves SMTP on **8080** in the service
+   port class the datapath handles (`--smtp 0.0.0.0:8080`), UI on 8025.
 
-`80-billing-lifecycle.sh` step 3 honors `P5_SKIP_EMAIL=1` to record this
-as SKIP-BLOCKED; without it the drill fails loud (by design).
+If the datapath fault is ever fixed (Docker Desktop VM rebuild is the
+likely cure — deferred because the P4 30-day soak runs on this cluster),
+revert to mailhog-via-1025 + the JavaMail adapter by dropping
+NOTIFICATION_MAIL_EAGER and the --smtp arg.
 
 ## Environment incidents during the gate run (fixed inline)
 
