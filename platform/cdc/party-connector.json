@@ -9,6 +9,8 @@
     "database.dbname": "ofbiz",
     "plugin.name": "pgoutput",
     "topic.prefix": "ofbiz",
+    "slot.name": "debezium_party",
+    "publication.name": "pub_debezium_party",
     "table.include.list": "public.PARTY,public.PERSON,public.PARTY_GROUP,public.PARTY_ROLE",
     "snapshot.mode": "initial",
     "snapshot.fetch.size": "1000",
