@@ -144,6 +144,8 @@ helm -n "${NS}" upgrade --install audit-svc "${CHART}" \
   --set-string 'env[3].name=AUDIT_DB_PASSWORD' --set-string 'env[3].value=audit' \
   --set-string "env[4].name=KAFKA_BOOTSTRAP_SERVERS" --set-string "env[4].value=${KAFKA}"
 
+# P5: staging mail (mailpit) speaks SMTP on 8080 + the eager client-first
+# adapter — the local kind datapath eats banner-first SMTP (issues/P5-GATE.md).
 TLS_ARGS_NOTIFICATION="$(tls_args notification-svc)"
 # shellcheck disable=SC2086
 helm -n "${NS}" upgrade --install notification-svc "${CHART}" \
@@ -154,8 +156,6 @@ helm -n "${NS}" upgrade --install notification-svc "${CHART}" \
   --set-string 'env[1].name=NOTIFICATION_DB_URL' --set-string "env[1].value=jdbc:postgresql://${POSTGRES}/notification" \
   --set-string 'env[2].name=NOTIFICATION_DB_USER' --set-string 'env[2].value=notification' \
   --set-string 'env[3].name=NOTIFICATION_DB_PASSWORD' --set-string 'env[3].value=notification' \
-  # P5: staging mail (mailpit) speaks SMTP on 8080 + the eager client-first
-  # adapter — the local kind datapath eats banner-first SMTP (issues/P5-GATE.md).
   --set-string 'env[4].name=SMTP_HOST' --set-string "env[4].value=mailhog.${NS}.svc" \
   --set-string 'env[5].name=SMTP_PORT' --set-string 'env[5].value=8080' \
   --set-string 'env[9].name=NOTIFICATION_MAIL_EAGER' --set-string 'env[9].value=true' \

@@ -56,9 +56,11 @@ Workaround (staging-only, both pieces in the repo):
 2. mailpit (mailhog successor) serves SMTP on **8080** in the service
    port class the datapath handles (`--smtp 0.0.0.0:8080`), UI on 8025.
 
-If the datapath fault is ever fixed (Docker Desktop VM rebuild is the
-likely cure — deferred because the P4 30-day soak runs on this cluster),
-revert to mailhog-via-1025 + the JavaMail adapter by dropping
+A Docker Desktop VM reboot was tested 2026-10-23 (user-approved): the
+fault SURVIVES it — structural to this Docker Desktop/kind datapath, not
+transient state. The eager-8080 workaround is therefore permanent for
+local staging; cloud staging uses the JavaMail adapter unchanged. If a
+future Docker Desktop upgrade fixes it, revert by dropping
 NOTIFICATION_MAIL_EAGER and the --smtp arg.
 
 ## Environment incidents during the gate run (fixed inline)
@@ -69,5 +71,11 @@ NOTIFICATION_MAIL_EAGER and the --smtp arg.
   pools): idle pools terminated to unblock bootstorms; durable fix =
   max_connections 300 (needs a postgres restart — pending user consent).
 - Postgres crashed during the disk window; recovered after space freed.
+- VM reboot (approved): cluster + PVs survived; node-local images needed
+  a full redeploy; monolith staging DB had NO volume and reset to
+  initdb state — P4 order + P5 accounting tables re-created (13-extend,
+  46-seed, 47-import) and a PVC added to monolith-db.yaml so it cannot
+  recur; CDC slots auto-recreated, all connectors RUNNING; checkers and
+  the full CG-5 e2e re-verified green post-reboot.
 - mailhog → mailpit swap + kube-proxy/conntrack archaeology — outcome
   documented above.

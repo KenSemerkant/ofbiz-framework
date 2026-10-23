@@ -141,11 +141,28 @@ spec:
           ports: [{containerPort: 5432}]
           volumeMounts:
             - {name: init, mountPath: /docker-entrypoint-initdb.d}
+            - {name: data, mountPath: /var/lib/postgresql/data}
           readinessProbe:
             exec: {command: [pg_isready, -U, ofbiz, -d, ofbiz]}
       volumes:
         - name: init
           configMap: {name: monolith-db-init}
+        - name: data
+          persistentVolumeClaim: {claimName: monolith-db-data}
+---
+# P5 hardening: the monolith staging DB used to live in the container's
+# writable layer — a VM hard-kill reset it to initdb state and wiped the
+# P4 order + P5 accounting tables. The PVC keeps data across pod moves.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: monolith-db-data
+  namespace: ofbiz
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 2Gi
 ---
 apiVersion: v1
 kind: Service
