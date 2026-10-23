@@ -41,6 +41,7 @@ ensure_db party
 ensure_db product
 ensure_db inventory
 ensure_db search
+ensure_db orderdb
 
 echo "==> [2/4] Topics + KafkaUsers"
 sh "${ROOT}/platform/helm/topics/10-create.sh"
@@ -61,6 +62,7 @@ build_image search-svc ":microservices:search-svc:search-adapters:adapters-rest:
 build_image party-svc ":microservices:party-svc:party-adapters:adapters-rest:bootJar" microservices/party-svc
 build_image product-svc ":microservices:product-svc:product-adapters:adapters-rest:bootJar" microservices/product-svc
 build_image inventory-svc ":microservices:inventory-svc:inventory-adapters:adapters-rest:bootJar" microservices/inventory-svc
+build_image order-svc ":microservices:order-svc:order-adapters:adapters-rest:bootJar" microservices/order-svc
 
 # Reshape a Strimzi KafkaUser secret into the file layout Boot 4 pem ssl
 # bundles expect: ca.crt (truststore) + user.crt/user.key (keystore).
@@ -78,7 +80,7 @@ kafka_pem_secret() { # kafkauser name
     --dry-run=client -o yaml | kubectl -n "${NS}" apply -f -
   rm -f /tmp/kafka-ca.crt /tmp/kafka-user.key /tmp/kafka-user.crt
 }
-for user in identity-svc audit-svc notification-svc search-svc party-svc product-svc inventory-svc; do kafka_pem_secret "${user}"; done
+for user in identity-svc audit-svc notification-svc search-svc party-svc product-svc inventory-svc order-svc; do kafka_pem_secret "${user}"; done
 
 # helm args to mount the PEM bundle and speak SSL to Kafka. The pem bundle
 # itself is declared in each service's application.yaml (env vars cannot
@@ -207,6 +209,10 @@ helm -n "${NS}" upgrade --install product-svc "${CHART}" \
   --set-string 'env[9].name=JAVA_TOOL_OPTIONS' --set-string 'env[9].value=-XX:MaxRAMPercentage=75.0'
 
 TLS_ARGS_INVENTORY="$(tls_args inventory-svc)"
+
+# P4-GATE: order-svc — own DB, monolith reverse-sync second datasource,
+# east-west integration URLs for the placeOrder saga (party/product/inventory).
+TLS_ARGS_ORDER="$(tls_args order-svc)"
 # shellcheck disable=SC2086
 helm -n "${NS}" upgrade --install inventory-svc "${CHART}" \
   --set image.repository=inventory-svc --set image.tag="${TAG}" \
@@ -219,8 +225,26 @@ helm -n "${NS}" upgrade --install inventory-svc "${CHART}" \
   --set-string "env[4].name=KAFKA_BOOTSTRAP_SERVERS" --set-string "env[4].value=${KAFKA}" \
   --set-string 'env[5].name=JAVA_TOOL_OPTIONS' --set-string 'env[5].value=-XX:MaxRAMPercentage=75.0'
 
-for deploy in identity-svc gateway audit-svc notification-svc search-svc party-svc product-svc inventory-svc; do
+# shellcheck disable=SC2086
+helm -n "${NS}" upgrade --install order-svc "${CHART}" \
+  --set image.repository=order-svc --set image.tag="${TAG}" \
+  --set replicaCount=1 --set autoscaling.enabled=false --set podDisruptionBudget.enabled=false \
+  ${TLS_ARGS_ORDER} \
+  --set-string 'env[0].name=SPRING_PROFILES_ACTIVE' --set-string 'env[0].value=prod' \
+  --set-string "env[1].name=ORDER_DB_URL" --set-string "env[1].value=jdbc:postgresql://${POSTGRES}/orderdb" \
+  --set-string 'env[2].name=ORDER_DB_USER' --set-string 'env[2].value=order' \
+  --set-string 'env[3].name=ORDER_DB_PASSWORD' --set-string 'env[3].value=order' \
+  --set-string "env[4].name=KAFKA_BOOTSTRAP_SERVERS" --set-string "env[4].value=${KAFKA}" \
+  --set-string "env[5].name=ORDER_PARTY_BASE_URL" --set-string "env[5].value=http://party-svc.${NS}.svc:8080" \
+  --set-string "env[6].name=ORDER_PRODUCT_BASE_URL" --set-string "env[6].value=http://product-svc.${NS}.svc:8080" \
+  --set-string "env[7].name=ORDER_INVENTORY_BASE_URL" --set-string "env[7].value=http://inventory-svc.${NS}.svc:8080" \
+  --set-string 'env[8].name=ORDER_MONOLITH_DATASOURCE_URL' --set-string "env[8].value=jdbc:postgresql://monolith-db.${NS}.svc:5432/ofbiz" \
+  --set-string 'env[9].name=ORDER_MONOLITH_DATASOURCE_USERNAME' --set-string 'env[9].value=ofbiz' \
+  --set-string 'env[10].name=ORDER_MONOLITH_DATASOURCE_PASSWORD' --set-string 'env[10].value=ofbiz' \
+  --set-string 'env[11].name=JAVA_TOOL_OPTIONS' --set-string 'env[11].value=-XX:MaxRAMPercentage=75.0'
+
+for deploy in identity-svc gateway audit-svc notification-svc search-svc party-svc product-svc inventory-svc order-svc; do
   kubectl -n "${NS}" rollout status "deploy/${deploy}" --timeout=300s
 done
 
-echo "DONE — eight services deployed (P1-F6-S2 + P2 party-svc + P3 product/inventory-svc)"
+echo "DONE — nine services deployed (P1-F6-S2 + P2 party-svc + P3 product/inventory-svc + P4 order-svc)"

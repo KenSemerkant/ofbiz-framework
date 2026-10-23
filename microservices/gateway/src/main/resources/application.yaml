@@ -49,6 +49,15 @@ spring:
                 - Path=/api/v1/products/**,/api/v1/categories/**,/api/v1/stores/**
               metadata:
                 required-role: CUSTOMER
+            # P4-GATE write cutover: order writes go to order-svc (monolith
+            # order tables stay current via reverse-sync; rollback = flip
+            # gateway.order.uri back to the monolith bridge)
+            - id: order-svc
+              uri: ${gateway.order.uri:http://order-svc.ofbiz.svc:8080}
+              predicates:
+                - Path=/api/v1/orders/**,/api/v1/quotes/**,/api/v1/returns/**,/api/v1/attributions/**
+              metadata:
+                required-role: CUSTOMER
             - id: monolith
               uri: ${gateway.monolith.uri:https://ofbiz-monolith.ofbiz.svc:8443}
               predicates:

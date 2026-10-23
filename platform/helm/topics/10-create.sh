@@ -259,4 +259,68 @@ for u in product-svc inventory-svc; do
   kubectl -n "${NS}" wait kafkauser/${u} --for=condition=Ready --timeout=180s
 done
 
-echo "DONE — P3 product/inventory topics + principals applied"
+# P4: order-svc aggregate topics (outbox relay produces; the ECA consumers
+# and the reverse-sync consumer are order-svc itself, marketing attribution
+# is P6 — DLQs on the consumed placed/cancelled topics per the P1-F6 rule)
+kubectl -n "${NS}" apply -f - <<'EOF6'
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: order.order.placed.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: order.order.placed.v1.dlq, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: order.order.approved.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: order.order.completed.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: order.order.cancelled.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: order.order.cancelled.v1.dlq, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: order.order.invoicerequested.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: order.return.created.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: order.creditmemo.issued.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+EOF6
+
+# P4: order-svc principal (produces own aggregate, consumes own placed/
+# cancelled events + the ORDER CDC topics). TLS only — same P0-F2-S2 caveat.
+kubectl -n "${NS}" apply -f - <<'EOF7'
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaUser
+metadata: {name: order-svc, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec:
+  authentication: {type: tls}
+EOF7
+
+kubectl -n "${NS}" wait kafkauser/order-svc --for=condition=Ready --timeout=180s
+
+echo "DONE — P3 product/inventory + P4 order topics + principals applied"

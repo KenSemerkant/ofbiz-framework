@@ -1,0 +1,31 @@
+# Production profile: every credential comes from the environment and has no
+# fallback, so a missing variable fails startup instead of booting with a
+# known development secret.
+spring:
+  datasource:
+    url: ${ORDER_DB_URL}
+    username: ${ORDER_DB_USER}
+    password: ${ORDER_DB_PASSWORD}
+  # Kafka mTLS material (mounted from the KafkaUser PEM secret by
+  # platform/services/10-deploy.sh; activated with SPRING_KAFKA_SSL_BUNDLE=kafka).
+  ssl:
+    bundle:
+      pem:
+        kafka:
+          truststore:
+            certificate: ${KAFKA_TLS_CA:/etc/kafka-tls/ca.crt}
+          keystore:
+            certificate: ${KAFKA_TLS_CERT:/etc/kafka-tls/user.crt}
+            privateKey: ${KAFKA_TLS_KEY:/etc/kafka-tls/user.key}
+order:
+  monolith:
+    sync:
+      enabled: true
+    datasource:
+      url: ${MONOLITH_DB_URL}
+      username: ${MONOLITH_DB_USER}
+      password: ${MONOLITH_DB_PASSWORD}
+  integration:
+    party-base-url: ${ORDER_PARTY_BASE_URL}
+    product-base-url: ${ORDER_PRODUCT_BASE_URL}
+    inventory-base-url: ${ORDER_INVENTORY_BASE_URL}

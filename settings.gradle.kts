@@ -46,4 +46,7 @@ include(
     ":microservices:inventory-svc:inventory-domain",
     ":microservices:inventory-svc:inventory-application",
     ":microservices:inventory-svc:inventory-adapters:adapters-rest",
+    ":microservices:order-svc:order-domain",
+    ":microservices:order-svc:order-application",
+    ":microservices:order-svc:order-adapters:adapters-rest",
 )
