@@ -30,6 +30,9 @@ spec:
             - {name: POSTGRES_USER, value: admin}
             - {name: POSTGRES_PASSWORD, value: admin}
             - {name: PGDATA, value: /var/lib/postgresql/data/pgdata}
+            # P5: 12+ services x 10-slot Hikari pools exceed the default 100
+            # (bootstorms hit "remaining connection slots are reserved")
+            - {name: POSTGRES_MAX_CONNECTIONS, value: "300"}
           ports: [{containerPort: 5432}]
           volumeMounts:
             - {name: data, mountPath: /var/lib/postgresql/data}
