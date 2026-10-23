@@ -141,22 +141,22 @@ Evidence: `platform/observability/20-verify.sh` → ALL CHECKS PASSED.
 
 # PHASE 3 — product-svc + inventory-svc
 
-**CG-3:**
-- [ ] Catalog browse + price lookup via new APIs in SPA
-- [ ] Stock reserve/release saga works; oversell impossible under concurrency (100 parallel reserves, 0 over-reserved)
-- [ ] search-svc indexes products on change events; search p99 < 100ms @ 100k docs
-- [ ] CDC cutover + consistency delta 0 for product/shipment slices; rollback drill done
+**CG-3:** PASSED 2026-10-22 (local kind staging) — issues/P3-GATE.md
+- [x] Catalog browse + price lookup via new APIs in SPA — platform/spa/20-verify-catalog.sh PASSED (OIDC PKCE login → 54 products via gateway → USD price 9.99 resolved); role gate: machine token 403
+- [x] Stock reserve/release saga works; oversell impossible under concurrency (100 parallel reserves, 0 over-reserved) — platform/services/50-reserve-drill.sh PASSED (28 reserves + 72 conflicts = 100, ATP = 50-28 exact, cancel releases ATP)
+- [x] search-svc indexes products on change events; search p99 < 100ms @ 100k docs — platform/services/60-search-benchmark.sh PASSED (live path 0s < 5s; p99 14ms @ 100,001 docs)
+- [x] CDC cutover + consistency delta 0 for product/shipment slices; rollback drill done — 31-check-product-consistency.sh DELTA 0 (mirror + post-cutover truth), 32-check-shipment-consistency.sh DELTA 0, 55-rollback-drill-product.sh PASSED (53 → 54, CDC-mirrored rollback write)
 
 ## P3-F1 product-svc
-- **S1 (L):** Product aggregate + categories + associations (≈192 entities; mapping table checked in). AC: [ ] CRUD via API [ ] category tree query [ ] events emitted [ ] ArchUnit + unit tests.
-- **S2 (M):** Pricing (price rules, currencies). AC: [ ] price resolution respects date-range rules [ ] `product.price.changed` on update [ ] snapshot-at-order contract test.
-- **S3 (S):** ProductStore/config exposure. AC: [ ] store settings API read/write.
+- **S1 (L):** Product aggregate + categories + associations (≈192 entities; mapping table checked in). AC: [x] CRUD via API [x] category tree query [x] events emitted [x] ArchUnit + unit tests. Evidence: ProductApiTest (upsert/fetch/delete roundtrip, created→updated→deleted events, tree query, wildcard-safety); ServiceArchitectureTest; ./gradlew build green (95% gate).
+- **S2 (M):** Pricing (price rules, currencies). AC: [x] price resolution respects date-range rules [x] `product.price.changed` on update [x] snapshot-at-order contract test. Evidence: PricingApiTest (date-range rules, currency fallback); price deltas incl. removals in ProductService; live price lookup 9.99 USD via gateway (20-verify-catalog.sh).
+- **S3 (S):** ProductStore/config exposure. AC: [x] store settings API read/write. Evidence: StoreApiTest.
 ## P3-F2 inventory-svc
-- **S1 (L):** Facility + InventoryItem + stock ops (facility slice ≈17 + shipment 47 entities). AC: [ ] adjust/transfer/receive flows [ ] events emitted.
-- **S2 (L):** Reservation saga (reserve→confirm/cancel). AC: [ ] optimistic-lock concurrency test: parallel reserves never oversell [ ] compensation on cancel [ ] p99 reserve < 200ms.
-- **S3 (M):** Shipment creation/packing/status. AC: [ ] ship-order flow transitions statuses [ ] `inventory.stock.shipped` emitted.
+- **S1 (L):** Facility + InventoryItem + stock ops (facility slice ≈17 + shipment 47 entities). AC: [x] adjust/transfer/receive flows [x] events emitted. Evidence: InventoryApiTest, FacilityApiTest, OutboxAtomicityTest (both services) — inventory.stock.received/adjusted/transferred.v1.
+- **S2 (L):** Reservation saga (reserve→confirm/cancel). AC: [x] optimistic-lock concurrency test: parallel reserves never oversell [x] compensation on cancel [x] p99 reserve < 200ms. Evidence: ReservationConcurrencyTest + on-cluster 50-reserve-drill.sh (100 parallel reserves, 0 over-reserved, cancel compensates; conflicts are bounded-retry 409s).
+- **S3 (M):** Shipment creation/packing/status. AC: [x] ship-order flow transitions statuses [x] `inventory.stock.shipped` emitted. Evidence: ShipmentApiTest (forward-only status machine, ship-order confirms reservations, inventory.stock.shipped.v1).
 ## P3-F3 search wiring
-- **S1 (M):** product indexer consumer. AC: [ ] product create/update → searchable < 5s [ ] field mapping versioned.
+- **S1 (M):** product indexer consumer. AC: [x] product create/update → searchable < 5s [x] field mapping versioned. Evidence: ProductEventListenerTest, ProductIndexerApiTest, ProductIndexMappingsTest (schemaVersion field + explicit mapping); on-cluster 60-search-benchmark.sh live path 0s.
 
 ---
 
