@@ -42,6 +42,8 @@ ensure_db product
 ensure_db inventory
 ensure_db search
 ensure_db orderdb
+ensure_db billing
+ensure_db finance
 
 echo "==> [2/4] Topics + KafkaUsers"
 sh "${ROOT}/platform/helm/topics/10-create.sh"
@@ -63,6 +65,8 @@ build_image party-svc ":microservices:party-svc:party-adapters:adapters-rest:boo
 build_image product-svc ":microservices:product-svc:product-adapters:adapters-rest:bootJar" microservices/product-svc
 build_image inventory-svc ":microservices:inventory-svc:inventory-adapters:adapters-rest:bootJar" microservices/inventory-svc
 build_image order-svc ":microservices:order-svc:order-adapters:adapters-rest:bootJar" microservices/order-svc
+build_image billing-svc ":microservices:billing-svc:billing-adapters:adapters-rest:bootJar" microservices/billing-svc
+build_image finance-svc ":microservices:finance-svc:finance-adapters:adapters-rest:bootJar" microservices/finance-svc
 
 # Reshape a Strimzi KafkaUser secret into the file layout Boot 4 pem ssl
 # bundles expect: ca.crt (truststore) + user.crt/user.key (keystore).
@@ -80,7 +84,7 @@ kafka_pem_secret() { # kafkauser name
     --dry-run=client -o yaml | kubectl -n "${NS}" apply -f -
   rm -f /tmp/kafka-ca.crt /tmp/kafka-user.key /tmp/kafka-user.crt
 }
-for user in identity-svc audit-svc notification-svc search-svc party-svc product-svc inventory-svc order-svc; do kafka_pem_secret "${user}"; done
+for user in identity-svc audit-svc notification-svc search-svc party-svc product-svc inventory-svc order-svc billing-svc finance-svc; do kafka_pem_secret "${user}"; done
 
 # helm args to mount the PEM bundle and speak SSL to Kafka. The pem bundle
 # itself is declared in each service's application.yaml (env vars cannot
@@ -150,7 +154,10 @@ helm -n "${NS}" upgrade --install notification-svc "${CHART}" \
   --set-string 'env[1].name=NOTIFICATION_DB_URL' --set-string "env[1].value=jdbc:postgresql://${POSTGRES}/notification" \
   --set-string 'env[2].name=NOTIFICATION_DB_USER' --set-string 'env[2].value=notification' \
   --set-string 'env[3].name=NOTIFICATION_DB_PASSWORD' --set-string 'env[3].value=notification' \
-  --set-string 'env[4].name=SMTP_HOST' --set-string "env[4].value=mailhog.${NS}.svc" \
+  # P5: staging SMTP = host mailpit via the Docker Desktop gateway. The
+  # local kind network blackholes in-cluster SMTP delivery (issues/P5-GATE.md);
+  # cloud staging overrides P5_SMTP_HOST back to the in-cluster mailhog service.
+  --set-string 'env[4].name=SMTP_HOST' --set-string "env[4].value=${P5_SMTP_HOST:-192.168.65.254}" \
   --set-string 'env[5].name=SMTP_PORT' --set-string 'env[5].value=1025' \
   --set-string 'env[6].name=SMTP_USER' --set-string 'env[6].value=' \
   --set-string 'env[7].name=SMTP_PASSWORD' --set-string 'env[7].value=' \
@@ -243,8 +250,37 @@ helm -n "${NS}" upgrade --install order-svc "${CHART}" \
   --set-string 'env[10].name=ORDER_MONOLITH_DATASOURCE_PASSWORD' --set-string 'env[10].value=ofbiz' \
   --set-string 'env[11].name=JAVA_TOOL_OPTIONS' --set-string 'env[11].value=-XX:MaxRAMPercentage=75.0'
 
-for deploy in identity-svc gateway audit-svc notification-svc search-svc party-svc product-svc inventory-svc order-svc; do
+# P5-GATE: billing-svc — own DB, Kafka for the P4 invoicerequested
+# handshake + notification.requested emit.
+TLS_ARGS_BILLING="$(tls_args billing-svc)"
+# shellcheck disable=SC2086
+helm -n "${NS}" upgrade --install billing-svc "${CHART}" \
+  --set image.repository=billing-svc --set image.tag="${TAG}" \
+  --set replicaCount=1 --set autoscaling.enabled=false --set podDisruptionBudget.enabled=false \
+  ${TLS_ARGS_BILLING} \
+  --set-string 'env[0].name=SPRING_PROFILES_ACTIVE' --set-string 'env[0].value=prod' \
+  --set-string "env[1].name=BILLING_DB_URL" --set-string "env[1].value=jdbc:postgresql://${POSTGRES}/billing" \
+  --set-string 'env[2].name=BILLING_DB_USER' --set-string 'env[2].value=billing' \
+  --set-string 'env[3].name=BILLING_DB_PASSWORD' --set-string 'env[3].value=billing' \
+  --set-string "env[4].name=KAFKA_BOOTSTRAP_SERVERS" --set-string "env[4].value=${KAFKA}" \
+  --set-string 'env[5].name=JAVA_TOOL_OPTIONS' --set-string 'env[5].value=-XX:MaxRAMPercentage=75.0'
+
+# P5-GATE: finance-svc — own DB, consumes billing invoice events.
+TLS_ARGS_FINANCE="$(tls_args finance-svc)"
+# shellcheck disable=SC2086
+helm -n "${NS}" upgrade --install finance-svc "${CHART}" \
+  --set image.repository=finance-svc --set image.tag="${TAG}" \
+  --set replicaCount=1 --set autoscaling.enabled=false --set podDisruptionBudget.enabled=false \
+  ${TLS_ARGS_FINANCE} \
+  --set-string 'env[0].name=SPRING_PROFILES_ACTIVE' --set-string 'env[0].value=prod' \
+  --set-string "env[1].name=FINANCE_DB_URL" --set-string "env[1].value=jdbc:postgresql://${POSTGRES}/finance" \
+  --set-string 'env[2].name=FINANCE_DB_USER' --set-string 'env[2].value=finance' \
+  --set-string 'env[3].name=FINANCE_DB_PASSWORD' --set-string 'env[3].value=finance' \
+  --set-string "env[4].name=KAFKA_BOOTSTRAP_SERVERS" --set-string "env[4].value=${KAFKA}" \
+  --set-string 'env[5].name=JAVA_TOOL_OPTIONS' --set-string 'env[5].value=-XX:MaxRAMPercentage=75.0'
+
+for deploy in identity-svc gateway audit-svc notification-svc search-svc party-svc product-svc inventory-svc order-svc billing-svc finance-svc; do
   kubectl -n "${NS}" rollout status "deploy/${deploy}" --timeout=300s
 done
 
-echo "DONE — nine services deployed (P1-F6-S2 + P2 party-svc + P3 product/inventory-svc + P4 order-svc)"
+echo "DONE — eleven services deployed (P1..P5: platform + party + product/inventory + order + billing/finance)"

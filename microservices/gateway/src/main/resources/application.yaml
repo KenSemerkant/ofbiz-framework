@@ -58,6 +58,21 @@ spring:
                 - Path=/api/v1/orders/**,/api/v1/quotes/**,/api/v1/returns/**,/api/v1/attributions/**
               metadata:
                 required-role: CUSTOMER
+            # P5-GATE: billing + finance APIs served by the new services
+            # (accounting screens in the monolith are read-only reference;
+            # rollback = flip gateway.billing.uri / gateway.finance.uri)
+            - id: billing-svc
+              uri: ${gateway.billing.uri:http://billing-svc.ofbiz.svc:8080}
+              predicates:
+                - Path=/api/v1/invoices/**,/api/v1/payments/**,/api/v1/billing-accounts/**
+              metadata:
+                required-role: CUSTOMER
+            - id: finance-svc
+              uri: ${gateway.finance.uri:http://finance-svc.ofbiz.svc:8080}
+              predicates:
+                - Path=/api/v1/gl/**
+              metadata:
+                required-role: CUSTOMER
             - id: monolith
               uri: ${gateway.monolith.uri:https://ofbiz-monolith.ofbiz.svc:8443}
               predicates:

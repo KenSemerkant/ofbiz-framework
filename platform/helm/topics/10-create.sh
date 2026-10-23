@@ -323,4 +323,73 @@ EOF7
 
 kubectl -n "${NS}" wait kafkauser/order-svc --for=condition=Ready --timeout=180s
 
-echo "DONE — P3 product/inventory + P4 order topics + principals applied"
+# P5: billing + finance aggregate topics. billing-svc produces the invoice/
+# payment aggregates and consumes order.order.invoicerequested (P4
+# handshake) + emits notification.requested; finance-svc consumes the
+# billing invoice events for auto-posting. DLQs on the consumed topics per
+# the P1-F6 rule.
+kubectl -n "${NS}" apply -f - <<'EOF8'
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: billing.invoice.issued.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: billing.invoice.issued.v1.dlq, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: billing.invoice.settled.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: billing.invoice.settled.v1.dlq, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: billing.payment.captured.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: billing.payment.failed.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: finance.transaction.posted.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: finance.period.closed.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: order.order.invoicerequested.v1.dlq, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaUser
+metadata: {name: billing-svc, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec:
+  authentication: {type: tls}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaUser
+metadata: {name: finance-svc, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec:
+  authentication: {type: tls}
+EOF8
+
+for u in billing-svc finance-svc; do
+  kubectl -n "${NS}" wait kafkauser/${u} --for=condition=Ready --timeout=180s
+done
+
+echo "DONE — P3 product/inventory + P4 order + P5 billing/finance topics + principals applied"

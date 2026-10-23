@@ -49,4 +49,10 @@ include(
     ":microservices:order-svc:order-domain",
     ":microservices:order-svc:order-application",
     ":microservices:order-svc:order-adapters:adapters-rest",
+    ":microservices:billing-svc:billing-domain",
+    ":microservices:billing-svc:billing-application",
+    ":microservices:billing-svc:billing-adapters:adapters-rest",
+    ":microservices:finance-svc:finance-domain",
+    ":microservices:finance-svc:finance-application",
+    ":microservices:finance-svc:finance-adapters:adapters-rest",
 )

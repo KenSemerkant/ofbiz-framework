@@ -27,17 +27,24 @@ spec:
 ---
 apiVersion: apps/v1
 kind: Deployment
+# P5: mailpit (the maintained mailhog successor; same ports +
+# MailHog-compatible API). Mesh-injected like every other service —
+# under STRICT mTLS a non-meshed mail backend silently blackholes SMTP
+# from meshed clients (envoy completes the TCP handshake, the plaintext
+# stream never reaches the app).
+apiVersion: apps/v1
+kind: Deployment
 metadata: {name: mailhog, namespace: ofbiz}
 spec:
   replicas: 1
   selector: {matchLabels: {app: mailhog}}
   template:
-    metadata: {labels: {app: mailhog, sidecar.istio.io/inject: "false"}}
+    metadata: {labels: {app: mailhog}}
     spec:
       containers:
         - name: mailhog
-          image: mailhog/mailhog:v1.0.1
-          ports: [{containerPort: 1025}, {containerPort: 8025}]
+          image: axllent/mailpit:latest
+          ports: [{containerPort: 1025, name: smtp}, {containerPort: 8025, name: ui}]
 ---
 apiVersion: v1
 kind: Service

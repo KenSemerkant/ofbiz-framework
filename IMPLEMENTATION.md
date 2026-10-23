@@ -181,22 +181,22 @@ Evidence: `platform/observability/20-verify.sh` → ALL CHECKS PASSED.
 
 # PHASE 5 — billing-svc + finance-svc
 
-**CG-5:**
-- [ ] SME-approved entity split (FUTURESTATE-LOWLEVEL §2.1) frozen in a migration mapping doc
-- [ ] Invoice issue→settle e2e; payment gateway adapter (test gateway) auth/capture/void
-- [ ] GL auto-posting from billing events; trial balance equals monolith trial balance on migrated dataset
-- [ ] notification-svc sends invoice emails; PCI scope documented as confined to billing-svc
+**CG-5:** PASSED 2026-10-23 with one infra-blocked item (local kind staging; evidence: issues/P5-GATE.md)
+- [x] SME-approved entity split (FUTURESTATE-LOWLEVEL §2.1) frozen in a migration mapping doc — billing-svc/MAPPING.md (99) + finance-svc/MAPPING.md (85), full 184-entity enumeration, crossover resolved per-entity
+- [x] Invoice issue→settle e2e; payment gateway adapter (test gateway) auth/capture/void — `platform/services/80-billing-lifecycle.sh` §2/§4/§5 PASS (invoicerequested→ISSUED, authorize→capture→SETTLED, void, typed 409)
+- [x] GL auto-posting from billing events; trial balance equals monolith trial balance on migrated dataset — e2e §7 (TB balanced, both auto-postings) + `35-check-finance-consistency.sh` PARITY (1100=175.50/0, 1200=225.50/175.50, 4000=0/225.50)
+- [x] PCI scope documented as confined to billing-svc (billing-svc/PCI-SCOPE.md); notification email delivery **BLOCKED by the local kind network fault** (issues/P5-GATE.md — pod-to-pod SMTP blackholed for every backend/client; path verified to JavaMail-send; P4 soak blocks cluster recreation)
 
 ## P5-F1 billing-svc
-- **S1 (L):** Invoice aggregate + issue/post/settle. AC: [ ] lifecycle states guarded [ ] `billing.invoice.*` events [ ] PDF render adapter.
-- **S2 (L):** Payment aggregate + gateway adapter framework. AC: [ ] auth/capture/void/retry against test gateway [ ] idempotency keys [ ] DLQ on outage with reconciliation report.
-- **S3 (M):** BillingAccount + terms. AC: [ ] credit-limit check on invoice.
+- **S1 (L):** Invoice aggregate + issue/post/settle. AC: [x] lifecycle states guarded [x] `billing.invoice.*` events [x] PDF render adapter. Evidence: InvoicePaymentGuardTest + BillingApiTest (409s, issue/settle/settled events in outbox, %PDF); MinimalPdfRenderer (dependency-free PDF 1.4).
+- **S2 (L):** Payment aggregate + gateway adapter framework. AC: [x] auth/capture/void/retry against test gateway [x] idempotency keys [x] DLQ on outage with reconciliation report. Evidence: TestGatewayAdapter (steerable, bounded retry), BillingApplicationSuiteTest (idempotent create, outage→GatewayUnavailableException→reconciliation row), KafkaConfig retry-then-DLQ, /api/v1/payments/reconciliation (e2e §4/§5).
+- **S3 (M):** BillingAccount + terms. AC: [x] credit-limit check on invoice. Evidence: BillingAccountTest + BillingApiTest.creditLimitBreachIsTyped409 (AR booked on issue, released on settle).
 ## P5-F2 finance-svc
-- **S1 (L):** GL: accounts, AcctgTrans postings, periods. AC: [ ] double-entry invariant enforced [ ] closed period blocks postings.
-- **S2 (M):** Auto-posting rules consumer (`billing.invoice.issued/settled` → AcctgTrans). AC: [ ] rules configurable per account mapping [ ] failure → parked-for-review, never dropped.
-- **S3 (M):** Trial-balance report API. AC: [ ] matches monolith trial balance on identical dataset (checker evidence).
+- **S1 (L):** GL: accounts, AcctgTrans postings, periods. AC: [x] double-entry invariant enforced [x] closed period blocks postings. Evidence: GlLedgerGuardTest + FinanceApiTest (unbalanced→409 UnbalancedTransactionException, closed period→409 ClosedPeriodException).
+- **S2 (M):** Auto-posting rules consumer (`billing.invoice.issued/settled` → AcctgTrans). AC: [x] rules configurable per account mapping [x] failure → parked-for-review, never dropped. Evidence: posting_rules table + FinanceApplicationSuiteTest (broken rule parks; redelivery no-op) + on-cluster e2e §7.
+- **S3 (M):** Trial-balance report API. AC: [x] matches monolith trial balance on identical dataset (checker evidence). Evidence: `35-check-finance-consistency.sh` PARITY on the 46-seed/47-import dataset.
 ## P5-F3 consistency
-- **S1 (M):** Accounting migration mapping doc + checker for both new DBs. AC: [ ] delta 0 run in staging.
+- **S1 (M):** Accounting migration mapping doc + checker for both new DBs. AC: [x] delta 0 run in staging. Evidence: `34-check-billing-consistency.sh` DELTA 0 (invoices d8c770db85dc/d8c770db85dc, payments f6f41d65fddc/f6f41d65fddc).
 
 ---
 

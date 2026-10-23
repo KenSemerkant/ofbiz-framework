@@ -21,7 +21,8 @@ public record Notification(
     public static final String CHANNEL_EMAIL = "EMAIL";
 
     /** Templates shipped on the classpath (templates/&lt;name&gt;_&lt;lang&gt;.properties). */
-    public static final Set<String> KNOWN_TEMPLATES = Set.of("welcome", "test-command");
+    public static final Set<String> KNOWN_TEMPLATES
+            = Set.of("welcome", "test-command", "invoice-issued");
 
     public Notification {
         require(nonBlank(notificationId), "notificationId must not be blank");
