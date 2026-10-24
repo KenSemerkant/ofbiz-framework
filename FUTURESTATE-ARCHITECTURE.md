@@ -233,8 +233,8 @@ Dependencies point inward only (adapters/infrastructure → application → doma
 ### 5.10 humanres-svc
 - **Purpose:** employees, positions, employments, skills, payroll inputs.
 - **OFBiz mapping:** humanres entitymodel (46).
-- **API:** `HumanResourcesService` gRPC + REST `/api/v1/hr`.
-- **Publishes:** `hr.employment.started/ended`.
+- **API:** `HumanResourcesService` gRPC + REST `/api/v1/positions`, `/api/v1/employments`, `/api/v1/onboarding` (P7 docs pass: aligned to the CG-6 implementation; the earlier `/api/v1/hr` sketch was never built).
+- **Publishes:** `humanres.employment.started/ended` (P7 docs pass: implemented `humanres.*` prefix is canonical — resolves the P6-GATE naming deviation).
 - **Consumes:** `party.party.created` (employee is a party role).
 - **Notes:** party linkage by ID only — no party data duplication.
 

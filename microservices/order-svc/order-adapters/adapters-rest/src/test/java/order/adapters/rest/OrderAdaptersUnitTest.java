@@ -29,13 +29,12 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import order.adapters.rest.events.MonolithSyncConsumers;
 import order.adapters.rest.events.OrderConsumers;
 import order.adapters.rest.events.OutboxRelay;
 import order.adapters.rest.events.SagaResumeRunner;
 import order.adapters.rest.integration.HttpIntegrations;
 import order.adapters.rest.persistence.JacksonOrderSerializer;
-import order.adapters.rest.persistence.JdbcMonolithOrderSyncWriter;
+import order.adapters.rest.persistence.OrderJson;
 import order.adapters.rest.persistence.JdbcSagaStore;
 import order.adapters.rest.persistence.OutboxEntryEntity;
 import order.adapters.rest.persistence.OutboxRepository;
@@ -76,28 +75,6 @@ class OrderAdaptersUnitTest {
             """);
         db.execute("create table processed_events (event_id varchar(255) primary key,"
             + " processed_at timestamptz not null default now())");
-        db.execute("""
-            create table monolith_order_projection (event_id varchar(255) primary key,
-                topic varchar(128) not null, payload text not null,
-                applied_at timestamptz not null default now())
-            """);
-        db.execute("""
-            create table "ORDER_HEADER" ("ORDER_ID" varchar(255) primary key,
-                "CUSTOMER_ID" varchar(255) not null, "STATUS_ID" varchar(32) not null,
-                "CURRENCY_UOM" varchar(20) not null, "GRAND_TOTAL" numeric(18,2) not null)
-            """);
-        db.execute("""
-            create table "ORDER_ITEM" ("ORDER_ID" varchar(255) not null,
-                "ORDER_ITEM_SEQ_ID" varchar(20) not null, "PRODUCT_ID" varchar(255) not null,
-                "QUANTITY" numeric(18,3) not null, "UNIT_PRICE" numeric(18,2) not null,
-                "UNIT_LIST_PRICE" numeric(18,2) not null,
-                primary key ("ORDER_ID", "ORDER_ITEM_SEQ_ID"))
-            """);
-        db.execute("""
-            create table "ORDER_STATUS_HISTORY" ("ORDER_ID" varchar(255) not null,
-                "STATUS_ID" varchar(32) not null, "NOTE" varchar(255),
-                "CHANGED_AT" timestamptz not null default now())
-            """);
     }
 
     // ---- saga store markers (guarded SQL on real Postgres) ----
@@ -128,61 +105,6 @@ class OrderAdaptersUnitTest {
             new SmallStores.JdbcProcessedEventStore(db);
         assertTrue(processed.recordIfAbsent("evt-1"));
         assertFalse(processed.recordIfAbsent("evt-1"), "a replayed id is a no-op");
-    }
-
-    // ---- monolith writers + CDC projection (real SQL) ----
-
-    @Test
-    void monolithOrderWriterUpsertsAndAppendsHistory() {
-        JdbcMonolithOrderSyncWriter writer = new JdbcMonolithOrderSyncWriter(db);
-        writer.upsertHeader("ORDER-M1", "CUST-1", "CREATED", "USD", "19.98");
-        writer.upsertHeader("ORDER-M1", "CUST-1", "APPROVED", "USD", "19.98");
-        assertEquals("APPROVED", db.queryForObject(
-            "select \"STATUS_ID\" from \"ORDER_HEADER\" where \"ORDER_ID\" = 'ORDER-M1'",
-            String.class));
-        writer.upsertItems("ORDER-M1", List.of(
-            new order.adapters.rest.persistence.OrderJson.LineDto("00001", "PROD-1", "WH",
-                BigDecimal.ONE, new BigDecimal("9.99"), "USD")));
-        writer.upsertItems("ORDER-M1", List.of(
-            new order.adapters.rest.persistence.OrderJson.LineDto("00001", "PROD-1", "WH",
-                new BigDecimal("2"), new BigDecimal("9.99"), "USD")));
-        assertEquals(0, new BigDecimal("2").compareTo(db.queryForObject(
-            "select \"QUANTITY\" from \"ORDER_ITEM\" where \"ORDER_ID\" = 'ORDER-M1'", BigDecimal.class)));
-        writer.appendHistory("ORDER-M1", "APPROVED", "approved");
-        assertEquals(1, db.queryForObject(
-            "select count(*) from \"ORDER_STATUS_HISTORY\" where \"ORDER_ID\" = 'ORDER-M1'",
-            Integer.class));
-    }
-
-    @Test
-    void cdcProjectionStoresEachEventOnce() {
-        MonolithSyncConsumers.CdcProjection projection =
-            new MonolithSyncConsumers.CdcProjection(db);
-        ConsumerRecord<String, String> record = new ConsumerRecord<>("ofbiz.ORDER_HEADER", 0,
-            5, "ORDER-M1", "{\"after\":{\"ORDER_ID\":\"ORDER-M1\"}}");
-        projection.onCdcEvent(record);
-        projection.onCdcEvent(record);
-        assertEquals(1, db.queryForObject(
-            "select count(*) from monolith_order_projection", Integer.class));
-    }
-
-    @Test
-    void reverseSyncConsumerWritesHeaderItemsHistory() {
-        JdbcMonolithOrderSyncWriter writer = new JdbcMonolithOrderSyncWriter(db);
-        MonolithSyncConsumers.ReverseSync consumer = new MonolithSyncConsumers.ReverseSync(writer);
-        consumer.onOrderEvent("""
-            {"orderId":"ORDER-M2","customerId":"CUST-2","grandTotal":"9.99","currency":"USD",
-             "lines":[{"orderItemSeqId":"00001","productId":"PROD-1","facilityId":"WH",
-                       "quantity":1,"unitPrice":9.99,"currencyUomId":"USD"}]}
-            """);
-        consumer.onOrderEvent(
-            "{\"orderId\":\"ORDER-M2\",\"customerId\":\"CUST-2\",\"status\":\"APPROVED\","
-                + "\"grandTotal\":\"9.99\",\"currency\":\"USD\",\"note\":\"approved\"}");
-        assertEquals("APPROVED", db.queryForObject(
-            "select \"STATUS_ID\" from \"ORDER_HEADER\" where \"ORDER_ID\" = 'ORDER-M2'", String.class));
-        assertEquals(2, db.queryForObject(
-            "select count(*) from \"ORDER_STATUS_HISTORY\" where \"ORDER_ID\" = 'ORDER-M2'",
-            Integer.class));
     }
 
     // ---- outbox relay ----
@@ -415,18 +337,6 @@ class OrderAdaptersUnitTest {
         } catch (java.io.IOException e) {
             throw new IllegalStateException(e);
         }
-    }
-
-    @Test
-    void monolithSyncConfigBuildsBeans() {
-        var config = new order.adapters.rest.config.MonolithSyncConfig();
-        var ds = config.orderDataSource("jdbc:postgresql://localhost/x", "u", "p");
-        assertNotNull(ds);
-        var jdbc = config.monolithJdbc(ds);
-        assertNotNull(jdbc);
-        // the service-own JdbcTemplate must exist too, or the CDC projection
-        // would fall back to the monolith one (party-svc P2 lesson)
-        assertNotNull(config.orderJdbc(ds));
     }
 
     @Test

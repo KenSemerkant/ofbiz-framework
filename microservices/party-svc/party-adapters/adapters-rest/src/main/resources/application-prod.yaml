@@ -18,11 +18,3 @@ spring:
           keystore:
             certificate: ${KAFKA_TLS_CERT:/etc/kafka-tls/user.crt}
             privateKey: ${KAFKA_TLS_KEY:/etc/kafka-tls/user.key}
-party:
-  monolith:
-    sync:
-      enabled: ${PARTY_MONOLITH_SYNC_ENABLED:false}
-    datasource:
-      url: ${PARTY_MONOLITH_DATASOURCE_URL:jdbc:postgresql://monolith-db.ofbiz.svc:5432/ofbiz}
-      username: ${PARTY_MONOLITH_DATASOURCE_USERNAME:ofbiz}
-      password: ${PARTY_MONOLITH_DATASOURCE_PASSWORD:ofbiz}

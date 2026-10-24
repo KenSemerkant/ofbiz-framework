@@ -18,13 +18,6 @@ spring:
             certificate: ${KAFKA_TLS_CERT:/etc/kafka-tls/user.crt}
             privateKey: ${KAFKA_TLS_KEY:/etc/kafka-tls/user.key}
 order:
-  monolith:
-    sync:
-      enabled: true
-    datasource:
-      url: ${MONOLITH_DB_URL}
-      username: ${MONOLITH_DB_USER}
-      password: ${MONOLITH_DB_PASSWORD}
   integration:
     party-base-url: ${ORDER_PARTY_BASE_URL}
     product-base-url: ${ORDER_PRODUCT_BASE_URL}

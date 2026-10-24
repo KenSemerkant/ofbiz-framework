@@ -23,10 +23,4 @@ public class PartyBeans {
     PartyService partyService(PartyStore store, OutboxWriter outbox, PartySerializer serializer) {
         return new PartyService(store, outbox, serializer);
     }
-
-    @Bean
-    party.application.MonolithProjectionService monolithProjectionService(
-            ofbiz.projection.IdempotentProjector.Sink sink) {
-        return new party.application.MonolithProjectionService(sink);
-    }
 }

@@ -202,11 +202,7 @@ helm -n "${NS}" upgrade --install party-svc "${CHART}" \
   --set-string 'env[3].name=PARTY_DB_PASSWORD' --set-string 'env[3].value=party' \
   --set-string "env[4].name=KAFKA_BOOTSTRAP_SERVERS" --set-string "env[4].value=${KAFKA}" \
   --set-string 'env[5].name=PARTY_GRPC_PORT' --set-string 'env[5].value=9090' \
-  --set-string 'env[6].name=PARTY_MONOLITH_SYNC_ENABLED' --set-string 'env[6].value=true' \
-  --set-string 'env[7].name=PARTY_MONOLITH_DATASOURCE_URL' --set-string "env[7].value=jdbc:postgresql://monolith-db.${NS}.svc:5432/ofbiz" \
-  --set-string 'env[8].name=PARTY_MONOLITH_DATASOURCE_USERNAME' --set-string 'env[8].value=ofbiz' \
-  --set-string 'env[9].name=PARTY_MONOLITH_DATASOURCE_PASSWORD' --set-string 'env[9].value=ofbiz' \
-  --set-string 'env[10].name=JAVA_TOOL_OPTIONS' --set-string 'env[10].value=-XX:MaxRAMPercentage=75.0'
+  --set-string 'env[6].name=JAVA_TOOL_OPTIONS' --set-string 'env[6].value=-XX:MaxRAMPercentage=75.0'
 
 TLS_ARGS_PRODUCT="$(tls_args product-svc)"
 # shellcheck disable=SC2086
@@ -219,15 +215,11 @@ helm -n "${NS}" upgrade --install product-svc "${CHART}" \
   --set-string 'env[2].name=PRODUCT_DB_USER' --set-string 'env[2].value=product' \
   --set-string 'env[3].name=PRODUCT_DB_PASSWORD' --set-string 'env[3].value=product' \
   --set-string "env[4].name=KAFKA_BOOTSTRAP_SERVERS" --set-string "env[4].value=${KAFKA}" \
-  --set-string 'env[5].name=PRODUCT_MONOLITH_SYNC_ENABLED' --set-string 'env[5].value=true' \
-  --set-string 'env[6].name=PRODUCT_MONOLITH_DATASOURCE_URL' --set-string "env[6].value=jdbc:postgresql://monolith-db.${NS}.svc:5432/ofbiz" \
-  --set-string 'env[7].name=PRODUCT_MONOLITH_DATASOURCE_USERNAME' --set-string 'env[7].value=ofbiz' \
-  --set-string 'env[8].name=PRODUCT_MONOLITH_DATASOURCE_PASSWORD' --set-string 'env[8].value=ofbiz' \
-  --set-string 'env[9].name=JAVA_TOOL_OPTIONS' --set-string 'env[9].value=-XX:MaxRAMPercentage=75.0'
+  --set-string 'env[5].name=JAVA_TOOL_OPTIONS' --set-string 'env[5].value=-XX:MaxRAMPercentage=75.0'
 
 TLS_ARGS_INVENTORY="$(tls_args inventory-svc)"
 
-# P4-GATE: order-svc — own DB, monolith reverse-sync second datasource,
+# P4-GATE: order-svc — own DB,
 # east-west integration URLs for the placeOrder saga (party/product/inventory).
 TLS_ARGS_ORDER="$(tls_args order-svc)"
 # shellcheck disable=SC2086
@@ -255,10 +247,7 @@ helm -n "${NS}" upgrade --install order-svc "${CHART}" \
   --set-string "env[5].name=ORDER_PARTY_BASE_URL" --set-string "env[5].value=http://party-svc.${NS}.svc:8080" \
   --set-string "env[6].name=ORDER_PRODUCT_BASE_URL" --set-string "env[6].value=http://product-svc.${NS}.svc:8080" \
   --set-string "env[7].name=ORDER_INVENTORY_BASE_URL" --set-string "env[7].value=http://inventory-svc.${NS}.svc:8080" \
-  --set-string 'env[8].name=ORDER_MONOLITH_DATASOURCE_URL' --set-string "env[8].value=jdbc:postgresql://monolith-db.${NS}.svc:5432/ofbiz" \
-  --set-string 'env[9].name=ORDER_MONOLITH_DATASOURCE_USERNAME' --set-string 'env[9].value=ofbiz' \
-  --set-string 'env[10].name=ORDER_MONOLITH_DATASOURCE_PASSWORD' --set-string 'env[10].value=ofbiz' \
-  --set-string 'env[11].name=JAVA_TOOL_OPTIONS' --set-string 'env[11].value=-XX:MaxRAMPercentage=75.0'
+  --set-string 'env[8].name=JAVA_TOOL_OPTIONS' --set-string 'env[8].value=-XX:MaxRAMPercentage=75.0'
 
 # P5-GATE: billing-svc — own DB, Kafka for the P4 invoicerequested
 # handshake + notification.requested emit.
