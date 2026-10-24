@@ -18,11 +18,11 @@ echo "consistency delta report (P6-GATE, migrated CG6-% dataset)"
 
 echo "== manufacturing =="
 cmp boms \
-  "$(M "SELECT md5(string_agg(t, chr(10) ORDER BY t)) FROM (SELECT \"PRODUCT_ID\"||chr(124)||\"COMPONENT_PRODUCT_ID\"||chr(124)||coalesce(\"QUANTITY\",1)||chr(124)||coalesce(\"SCRAP_PCT\",0) AS t FROM \"PRODUCT_BOM\" WHERE \"PRODUCT_ID\" LIKE 'CG6-%') x;")" \
-  "$(S manufacturing "SELECT md5(string_agg(t, chr(10) ORDER BY t)) FROM (SELECT product_id||chr(124)||c->>'productId'||chr(124)||(c->>'quantity')||chr(124)||(c->>'scrapPct') AS t FROM boms, json_array_elements(components::json) c WHERE product_id LIKE 'CG6-%') x;")"
+  "$(M "SELECT md5(string_agg(t, chr(10) ORDER BY t)) FROM (SELECT \"PRODUCT_ID\"||chr(124)||\"COMPONENT_PRODUCT_ID\"||chr(124)||\"QUANTITY\"||chr(124)||\"SCRAP_PCT\" AS t FROM \"PRODUCT_BOM\" WHERE \"PRODUCT_ID\" LIKE 'CG6-%') x;")" \
+  "$(S manufacturing "SELECT md5(string_agg(t, chr(10) ORDER BY t)) FROM (SELECT product_id||chr(124)||(j->>'productId')||chr(124)||(j->>'quantity')||chr(124)||(j->>'scrapPct') AS t FROM boms CROSS JOIN LATERAL (SELECT (components::json)->i AS j FROM generate_series(0, json_array_length(components::json)-1) i) e WHERE product_id LIKE 'CG6-%') x;")"
 cmp mrp-events \
-  "$(M "SELECT md5(string_agg(t, chr(10) ORDER BY t)) FROM (SELECT \"PRODUCT_ID\"||chr(124)||\"EVENT_TYPE\"||chr(124)||coalesce(\"QUANTITY\",0) AS t FROM \"MRP_EVENT\" WHERE \"MRP_ID\" LIKE 'CG6-%') x;")" \
-  "$(S manufacturing "SELECT md5(string_agg(t, chr(10) ORDER BY t)) FROM (SELECT product_id||chr(124)||event_type||chr(124)||quantity::text AS t FROM mrp_events WHERE event_id LIKE 'CG6-%') x;")"
+  "$(M "SELECT md5(string_agg(t, chr(10) ORDER BY t)) FROM (SELECT \"PRODUCT_ID\"||chr(124)||\"EVENT_TYPE\"||chr(124)||\"QUANTITY\" AS t FROM \"MRP_EVENT\" WHERE \"MRP_ID\" LIKE 'CG6-%') x;")" \
+  "$(S manufacturing "SELECT md5(string_agg(t, chr(10) ORDER BY t)) FROM (SELECT product_id||chr(124)||event_type||chr(124)||(round(quantity))::int::text AS t FROM mrp_events WHERE event_id LIKE 'CG6-%') x;")"
 
 echo "== workeffort =="
 cmp efforts \

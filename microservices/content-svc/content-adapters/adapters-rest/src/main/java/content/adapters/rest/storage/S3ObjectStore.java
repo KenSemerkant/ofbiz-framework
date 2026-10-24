@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.core.checksums.RequestChecksumCalculation;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -38,6 +39,10 @@ public class S3ObjectStore implements ObjectStore {
             .credentialsProvider(StaticCredentialsProvider.create(
                 AwsBasicCredentials.create(accessKey, secretKey)))
             .forcePathStyle(true)
+            // Garage rejects the aws-chunked trailer encoding the default
+            // CRC32 checksum forces ("Invalid payload signature") — only
+            // calculate checksums when the operation requires one
+            .requestChecksumCalculation(RequestChecksumCalculation.WHEN_REQUIRED)
             .build(), bucket);
     }
 

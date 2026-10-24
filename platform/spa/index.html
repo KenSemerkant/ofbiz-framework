@@ -28,6 +28,12 @@
   <button id="catalog">Browse catalog</button>
   <table><thead><tr><th>ID</th><th>Internal name</th><th>Product name</th><th>Price (USD)</th></tr></thead><tbody id="crows"></tbody></table>
 
+  <h2>Long-tail domains (P6)</h2>
+  <p id="p6msg"></p>
+  <!-- P6-GATE S3: CRUD screens for the five long-tail primary entities.
+       One generic widget per domain: create via POST, read back via GET. -->
+  <div id="p6"></div>
+
   <script>
     // dev: SPA on :4200, gateway on :8080 (same host)
     const GATEWAY = location.origin.replace(/:\d+$/, ':8080');
@@ -111,6 +117,58 @@
     }
 
     document.getElementById('catalog').onclick = loadCatalog;
+
+    // P6-GATE S3: long-tail CRUD screens. config: title, endpoint, fields
+    // (label + name), payload builder from the form values.
+    const P6_DOMAINS = [
+      { title: 'BOM (manufacturing)', endpoint: '/api/v1/boms', id: 'productId',
+        fields: [['product', 'productId'], ['component', 'componentId'], ['qty', 'quantity']],
+        payload: v => ({ productId: v.productId,
+          components: [{ productId: v.componentId, quantity: Number(v.quantity) || 1, scrapPct: 0 }] }) },
+      { title: 'Work effort (workeffort)', endpoint: '/api/v1/workefforts', id: 'workEffortId',
+        fields: [['id', 'workEffortId'], ['type', 'workEffortTypeId'], ['name', 'workEffortName']],
+        payload: v => ({ ...v, workEffortTypeId: v.workEffortTypeId || 'TASK' }) },
+      { title: 'Position (humanres)', endpoint: '/api/v1/positions', id: 'emplPositionId',
+        fields: [['id', 'emplPositionId'], ['type', 'emplPositionTypeId']],
+        payload: v => ({ ...v, statusId: 'ACTIVE' }) },
+      { title: 'Content', endpoint: '/api/v1/contents', id: 'contentId',
+        fields: [['id', 'contentId'], ['name', 'contentName'], ['type', 'contentTypeId']],
+        payload: v => ({ ...v, contentTypeId: v.contentTypeId || 'DOCUMENT' }) },
+      { title: 'Campaign (marketing)', endpoint: '/api/v1/campaigns', id: 'marketingCampaignId',
+        fields: [['id', 'marketingCampaignId'], ['name', 'campaignName']],
+        payload: v => ({ ...v, statusId: 'ACTIVE', fromDate: '2026-01-01', thruDate: '2026-12-31' }) },
+    ];
+
+    async function api(method, path, body) {
+      const token = sessionStorage.getItem('token');
+      if (!token) throw new Error('sign in first');
+      const res = await fetch(GATEWAY + path, {
+        method,
+        headers: { Authorization: 'Bearer ' + token,
+          ...(body ? { 'Content-Type': 'application/json' } : {}) },
+        ...(body ? { body: JSON.stringify(body) } : {}) });
+      if (!res.ok) throw new Error(method + ' ' + path + ' -> ' + res.status);
+      return res.json();
+    }
+
+    for (const d of P6_DOMAINS) {
+      const box = document.createElement('div');
+      box.innerHTML = `<h3>${d.title}</h3><form data-f="p6-${d.id}">
+        ${d.fields.map(f => `<input name="${f[1]}" placeholder="${f[0]}">`).join('')}
+        <button>create</button></form>
+        <table><thead><tr><th>result</th></tr></thead><tbody><tr><td data-r="p6-${d.id}">—</td></tr></tbody></table>`;
+      document.getElementById('p6').appendChild(box);
+      box.querySelector('form').onsubmit = async e => {
+        e.preventDefault();
+        const cell = box.querySelector('[data-r]');
+        const v = Object.fromEntries(new FormData(e.target).entries());
+        try {
+          await api('POST', d.endpoint, d.payload(v));
+          const saved = await api('GET', `${d.endpoint}/${encodeURIComponent(v[d.id])}`);
+          cell.textContent = 'saved + read back: ' + JSON.stringify(saved).slice(0, 120);
+        } catch (err) { cell.textContent = err.message; }
+      };
+    }
   </script>
 </body>
 </html>
