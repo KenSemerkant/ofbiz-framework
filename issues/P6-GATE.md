@@ -54,6 +54,19 @@ built on the Phase-2 CDC template, deployed, migrated (delta 0), drilled
    present on the runner (it parses the feed and asserts the drill UID);
    headless hosts fall back to a strict RFC 5545 structural check. No GUI
    calendar exists in the staging environment.
+4. **MRP v1 nets to ONE proposal per short product**; monolith MrpServices
+   proposes per mid-stream stock dip (stockTmp replenished per proposal —
+   `MrpServices.java:1373-1486`). Identical on datasets without recovering
+   mid-stream dips; the CG6-% gate dataset is exactly that shape (one
+   DEMAND + one SUPPLY per product). A future multi-dip dataset or the P7
+   reverse-sync work needs the per-dip planner.
+5. **Topic prefix `humanres.*`** follows the IMPLEMENTATION.md
+   `<context>.<aggregate>.<action>.v<N>` rule; FUTURESTATE-ARCHITECTURE
+   §5.10 sketched `hr.` — reconcile in the P7 docs pass (rename would
+   touch topics + consumer groups with no functional gain).
+6. **iCal DTEND is RFC-5545 exclusive**: inclusive
+   `estimatedCompletionDate` ships as completionDate+1 (external-calendar
+   correctness is the CG).
 
 ## New traps (for P7)
 
