@@ -1,0 +1,19 @@
+# Production profile: every credential comes from the environment and has no
+# fallback, so a missing variable fails startup instead of booting with a
+# known development secret.
+spring:
+  datasource:
+    url: ${CONTENT_DB_URL}
+    username: ${CONTENT_DB_USER}
+    password: ${CONTENT_DB_PASSWORD}
+  # Kafka mTLS material (mounted from the KafkaUser PEM secret by
+  # platform/services/10-deploy.sh; activated with SPRING_KAFKA_SSL_BUNDLE=kafka).
+  ssl:
+    bundle:
+      pem:
+        kafka:
+          truststore:
+            certificate: ${KAFKA_TLS_CA:/etc/kafka-tls/ca.crt}
+          keystore:
+            certificate: ${KAFKA_TLS_CERT:/etc/kafka-tls/user.crt}
+            privateKey: ${KAFKA_TLS_KEY:/etc/kafka-tls/user.key}

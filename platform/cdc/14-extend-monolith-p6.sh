@@ -1,0 +1,120 @@
+#!/usr/bin/env bash
+# P6-GATE: extend the RUNNING monolith-db stand-in with the long-tail
+# slices (init.sql in monolith-db.yaml only runs on first volume init).
+# Idempotent — safe to re-run. The real OFBiz entity PKs are composite in
+# places (Employment, TimeEntry); the stand-in models them with single-col
+# surrogate PKs — documented in each service's MAPPING.md.
+set -euo pipefail
+NS="ofbiz"
+
+psql_file() {
+  kubectl -n "${NS}" exec -i deploy/monolith-db -- psql -U ofbiz -d ofbiz -v ON_ERROR_STOP=1
+}
+
+echo "==> [1/2] long-tail DDL (manufacturing, workeffort, humanres, content, marketing)"
+psql_file <<'SQL'
+-- manufacturing slice (BOM + routing + MRP events)
+CREATE TABLE IF NOT EXISTS "PRODUCT_BOM" (
+  "PRODUCT_ID" VARCHAR(255) NOT NULL,
+  "COMPONENT_PRODUCT_ID" VARCHAR(255) NOT NULL,
+  "QUANTITY" TEXT,
+  "SCRAP_PCT" TEXT,
+  PRIMARY KEY ("PRODUCT_ID", "COMPONENT_PRODUCT_ID")
+);
+CREATE TABLE IF NOT EXISTS "ROUTING" (
+  "ROUTING_ID" VARCHAR(255) PRIMARY KEY,
+  "PRODUCT_ID" VARCHAR(255) NOT NULL
+);
+CREATE TABLE IF NOT EXISTS "ROUTING_TASK" (
+  "ROUTING_ID" VARCHAR(255) NOT NULL,
+  "SEQ_ID" VARCHAR(20) NOT NULL,
+  "TASK_NAME" VARCHAR(255) NOT NULL,
+  "ESTIMATED_DURATION" TEXT,
+  PRIMARY KEY ("ROUTING_ID", "SEQ_ID")
+);
+CREATE TABLE IF NOT EXISTS "MRP_EVENT" (
+  "MRP_ID" VARCHAR(255) NOT NULL,
+  "PRODUCT_ID" VARCHAR(255) NOT NULL,
+  "EVENT_TYPE" VARCHAR(32) NOT NULL,
+  "QUANTITY" TEXT,
+  "EVENT_DATE" TIMESTAMP DEFAULT now(),
+  PRIMARY KEY ("MRP_ID", "PRODUCT_ID", "EVENT_TYPE")
+);
+-- workeffort slice
+CREATE TABLE IF NOT EXISTS "WORK_EFFORT" (
+  "WORK_EFFORT_ID" VARCHAR(255) PRIMARY KEY,
+  "WORK_EFFORT_TYPE_ID" VARCHAR(32) NOT NULL,
+  "WORK_EFFORT_NAME" VARCHAR(255) NOT NULL,
+  "PARENT_WORK_EFFORT_ID" VARCHAR(255),
+  "STATUS_ID" VARCHAR(32) NOT NULL,
+  "ESTIMATED_START_DATE" DATE,
+  "ESTIMATED_COMPLETION_DATE" DATE
+);
+CREATE TABLE IF NOT EXISTS "TIMESHEET" (
+  "TIMESHEET_ID" VARCHAR(255) PRIMARY KEY,
+  "PARTY_ID" VARCHAR(255) NOT NULL,
+  "FROM_DATE" DATE,
+  "THRU_DATE" DATE,
+  "STATUS_ID" VARCHAR(32) NOT NULL
+);
+CREATE TABLE IF NOT EXISTS "TIME_ENTRY" (
+  "TIME_ENTRY_ID" VARCHAR(255) PRIMARY KEY,
+  "TIMESHEET_ID" VARCHAR(255) NOT NULL,
+  "WORK_EFFORT_ID" VARCHAR(255) NOT NULL,
+  "HOURS" TEXT,
+  "RATE_TYPE_ID" VARCHAR(32)
+);
+-- humanres slice
+CREATE TABLE IF NOT EXISTS "EMPL_POSITION" (
+  "EMPL_POSITION_ID" VARCHAR(255) PRIMARY KEY,
+  "EMPL_POSITION_TYPE_ID" VARCHAR(32) NOT NULL,
+  "REPORTS_TO_EMPL_POSITION_ID" VARCHAR(255),
+  "STATUS_ID" VARCHAR(32) NOT NULL
+);
+CREATE TABLE IF NOT EXISTS "EMPLOYMENT" (
+  "EMPLOYMENT_ID" VARCHAR(255) PRIMARY KEY,
+  "PARTY_ID" VARCHAR(255) NOT NULL,
+  "EMPL_POSITION_ID" VARCHAR(255) NOT NULL,
+  "FROM_DATE" DATE,
+  "THRU_DATE" DATE
+);
+-- content slice (bytes live in S3 per ADR-008 — only metadata is relational)
+CREATE TABLE IF NOT EXISTS "CONTENT" (
+  "CONTENT_ID" VARCHAR(255) PRIMARY KEY,
+  "CONTENT_TYPE_ID" VARCHAR(32) NOT NULL,
+  "CONTENT_NAME" VARCHAR(255) NOT NULL,
+  "PARENT_CONTENT_ID" VARCHAR(255),
+  "STATUS_ID" VARCHAR(32) NOT NULL,
+  "S3_KEY" VARCHAR(512),
+  "MIME_TYPE" VARCHAR(255),
+  "SIZE_BYTES" BIGINT
+);
+-- marketing slice
+CREATE TABLE IF NOT EXISTS "MARKETING_CAMPAIGN" (
+  "MARKETING_CAMPAIGN_ID" VARCHAR(255) PRIMARY KEY,
+  "CAMPAIGN_NAME" VARCHAR(255) NOT NULL,
+  "STATUS_ID" VARCHAR(32) NOT NULL,
+  "FROM_DATE" DATE,
+  "THRU_DATE" DATE
+);
+CREATE TABLE IF NOT EXISTS "TRACKING_CODE" (
+  "TRACKING_CODE_ID" VARCHAR(255) PRIMARY KEY,
+  "MARKETING_CAMPAIGN_ID" VARCHAR(255),
+  "DESCRIPTION" VARCHAR(255)
+);
+CREATE TABLE IF NOT EXISTS "SALES_OPPORTUNITY" (
+  "SALES_OPPORTUNITY_ID" VARCHAR(255) PRIMARY KEY,
+  "DESCRIPTION" VARCHAR(255) NOT NULL,
+  "OPPORTUNITY_STAGE_ID" VARCHAR(32),
+  "CLOSE_PROBABILITY" INT
+);
+SQL
+
+echo "==> [2/2] publication must cover the new tables"
+# publication.autocreate.mode=filtered in the connector creates it; this
+# pre-step only verifies the DB allows publications (replica identity on
+# the composite-PK tables above is already covered by their PKs).
+kubectl -n "${NS}" exec deploy/monolith-db -- psql -U ofbiz -d ofbiz -Atc \
+  "SELECT count(*) FROM pg_publication WHERE pubname='pub_debezium_p6';"
+
+echo "P6 monolith slices ready"

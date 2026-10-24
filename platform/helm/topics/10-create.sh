@@ -392,4 +392,175 @@ for u in billing-svc finance-svc; do
   kubectl -n "${NS}" wait kafkauser/${u} --for=condition=Ready --timeout=180s
 done
 
-echo "DONE — P3 product/inventory + P4 order + P5 billing/finance topics + principals applied"
+# P6: long-tail domains (manufacturing, workeffort, humanres, content,
+# marketing). manufacturing-svc consumes order.order.placed (DLQ exists) +
+# inventory stock events; humanres-svc consumes party events; marketing-svc
+# consumes order.order.placed. DLQs added for the newly-consumed topics.
+kubectl -n "${NS}" apply -f - <<'EOF9'
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: manufacturing.bom.created.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: manufacturing.bom.updated.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: manufacturing.bom.deleted.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: manufacturing.routing.created.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: manufacturing.routing.updated.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: manufacturing.mrp.proposed.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: inventory.stock.received.v1.dlq, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: inventory.stock.adjusted.v1.dlq, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: workeffort.effort.created.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: workeffort.effort.updated.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: workeffort.timesheet.submitted.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: humanres.position.created.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: humanres.position.updated.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: humanres.employment.created.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: humanres.onboarding.completed.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: party.party.created.v1.dlq, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: party.party.updated.v1.dlq, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: content.content.created.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: content.content.updated.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: content.content.published.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: marketing.campaign.created.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: marketing.campaign.updated.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: marketing.trackingcode.created.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: marketing.trackingcode.updated.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: marketing.opportunity.created.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: {name: marketing.opportunity.updated.v1, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec: {partitions: 3, replicas: 3, config: {retention.ms: "604800000"}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaUser
+metadata: {name: manufacturing-svc, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec:
+  authentication: {type: tls}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaUser
+metadata: {name: workeffort-svc, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec:
+  authentication: {type: tls}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaUser
+metadata: {name: humanres-svc, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec:
+  authentication: {type: tls}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaUser
+metadata: {name: content-svc, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec:
+  authentication: {type: tls}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaUser
+metadata: {name: marketing-svc, namespace: ofbiz, labels: {strimzi.io/cluster: ofbiz}}
+spec:
+  authentication: {type: tls}
+EOF9
+
+for u in manufacturing-svc workeffort-svc humanres-svc content-svc marketing-svc; do
+  kubectl -n "${NS}" wait kafkauser/${u} --for=condition=Ready --timeout=180s
+done
+
+echo "DONE — P3 product/inventory + P4 order + P5 billing/finance + P6 long-tail topics + principals applied"

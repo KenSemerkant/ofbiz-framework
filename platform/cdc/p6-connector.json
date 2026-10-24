@@ -1,0 +1,30 @@
+{
+  "name": "monolith-p6",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "database.hostname": "monolith-db",
+    "database.port": "5432",
+    "database.user": "ofbiz",
+    "database.password": "ofbiz",
+    "database.dbname": "ofbiz",
+    "plugin.name": "pgoutput",
+    "topic.prefix": "ofbiz-p6",
+    "slot.name": "debezium_p6",
+    "publication.name": "pub_debezium_p6",
+    "publication.autocreate.mode": "filtered",
+    "table.include.list": "public.PRODUCT_BOM,public.ROUTING,public.ROUTING_TASK,public.MRP_EVENT,public.WORK_EFFORT,public.TIMESHEET,public.TIME_ENTRY,public.EMPL_POSITION,public.EMPLOYMENT,public.CONTENT,public.MARKETING_CAMPAIGN,public.TRACKING_CODE,public.SALES_OPPORTUNITY",
+    "snapshot.mode": "initial",
+    "snapshot.fetch.size": "1000",
+    "heartbeat.interval.ms": "1000",
+    "tombstones.on.delete": "false",
+    "decimal.handling.mode": "string",
+    "transforms": "dropSchema",
+    "transforms.dropSchema.type": "org.apache.kafka.connect.transforms.RegexRouter",
+    "transforms.dropSchema.regex": "ofbiz-p6\\.public\\.(.*)",
+    "transforms.dropSchema.replacement": "ofbiz.$1",
+    "key.converter.apicurio.registry.url": "http://schema-registry:8080/apis/registry/v2",
+    "value.converter.apicurio.registry.url": "http://schema-registry:8080/apis/registry/v2",
+    "key.converter.apicurio.registry.auto-register": "true",
+    "value.converter.apicurio.registry.auto-register": "true"
+  }
+}

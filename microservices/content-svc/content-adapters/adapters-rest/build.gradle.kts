@@ -1,0 +1,22 @@
+plugins {
+    id("ofbiz-msa.spring-boot-service")
+}
+
+dependencies {
+    implementation(project(":microservices:content-svc:content-application"))
+    implementation(project(":microservices:content-svc:content-domain"))
+    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+    implementation("org.springframework.boot:spring-boot-starter-kafka")
+    implementation("org.springframework.boot:spring-boot-starter-flyway")
+    implementation("org.flywaydb:flyway-database-postgresql")
+    runtimeOnly("org.postgresql:postgresql")
+    // S3 API adapter (ADR-008): Garage locally, cloud S3 = endpoint+creds swap
+    implementation(platform("software.amazon.awssdk:bom:2.31.9"))
+    implementation("software.amazon.awssdk:s3")
+    runtimeOnly("software.amazon.awssdk:apache-client")
+
+    testImplementation("org.springframework.boot:spring-boot-testcontainers")
+    testImplementation("org.testcontainers:testcontainers-junit-jupiter")
+    testImplementation("org.testcontainers:testcontainers-postgresql")
+    testImplementation(project(":platform:arch-rules"))
+}

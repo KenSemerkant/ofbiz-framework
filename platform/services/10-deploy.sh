@@ -44,6 +44,11 @@ ensure_db search
 ensure_db orderdb
 ensure_db billing
 ensure_db finance
+ensure_db manufacturing
+ensure_db workeffort
+ensure_db humanres
+ensure_db content
+ensure_db marketing
 
 echo "==> [2/4] Topics + KafkaUsers"
 sh "${ROOT}/platform/helm/topics/10-create.sh"
@@ -67,6 +72,11 @@ build_image inventory-svc ":microservices:inventory-svc:inventory-adapters:adapt
 build_image order-svc ":microservices:order-svc:order-adapters:adapters-rest:bootJar" microservices/order-svc
 build_image billing-svc ":microservices:billing-svc:billing-adapters:adapters-rest:bootJar" microservices/billing-svc
 build_image finance-svc ":microservices:finance-svc:finance-adapters:adapters-rest:bootJar" microservices/finance-svc
+build_image manufacturing-svc ":microservices:manufacturing-svc:manufacturing-adapters:adapters-rest:bootJar" microservices/manufacturing-svc
+build_image workeffort-svc ":microservices:workeffort-svc:workeffort-adapters:adapters-rest:bootJar" microservices/workeffort-svc
+build_image humanres-svc ":microservices:humanres-svc:humanres-adapters:adapters-rest:bootJar" microservices/humanres-svc
+build_image content-svc ":microservices:content-svc:content-adapters:adapters-rest:bootJar" microservices/content-svc
+build_image marketing-svc ":microservices:marketing-svc:marketing-adapters:adapters-rest:bootJar" microservices/marketing-svc
 
 # Reshape a Strimzi KafkaUser secret into the file layout Boot 4 pem ssl
 # bundles expect: ca.crt (truststore) + user.crt/user.key (keystore).
@@ -84,7 +94,7 @@ kafka_pem_secret() { # kafkauser name
     --dry-run=client -o yaml | kubectl -n "${NS}" apply -f -
   rm -f /tmp/kafka-ca.crt /tmp/kafka-user.key /tmp/kafka-user.crt
 }
-for user in identity-svc audit-svc notification-svc search-svc party-svc product-svc inventory-svc order-svc billing-svc finance-svc; do kafka_pem_secret "${user}"; done
+for user in identity-svc audit-svc notification-svc search-svc party-svc product-svc inventory-svc order-svc billing-svc finance-svc manufacturing-svc workeffort-svc humanres-svc content-svc marketing-svc; do kafka_pem_secret "${user}"; done
 
 # helm args to mount the PEM bundle and speak SSL to Kafka. The pem bundle
 # itself is declared in each service's application.yaml (env vars cannot
@@ -279,8 +289,94 @@ helm -n "${NS}" upgrade --install finance-svc "${CHART}" \
   --set-string "env[4].name=KAFKA_BOOTSTRAP_SERVERS" --set-string "env[4].value=${KAFKA}" \
   --set-string 'env[5].name=JAVA_TOOL_OPTIONS' --set-string 'env[5].value=-XX:MaxRAMPercentage=75.0'
 
-for deploy in identity-svc gateway audit-svc notification-svc search-svc party-svc product-svc inventory-svc order-svc billing-svc finance-svc; do
+# P6-GATE: long-tail services — own DBs; manufacturing/marketing consume
+# order+inventory events, humanres consumes party events + calls party-svc,
+# content uses the Garage S3 API (ADR-008).
+TLS_ARGS_MFG="$(tls_args manufacturing-svc)"
+# shellcheck disable=SC2086
+helm -n "${NS}" upgrade --install manufacturing-svc "${CHART}" \
+  --set image.repository=manufacturing-svc --set image.tag="${TAG}" \
+  --set replicaCount=1 --set autoscaling.enabled=false --set podDisruptionBudget.enabled=false \
+  ${TLS_ARGS_MFG} \
+  --set-string 'env[0].name=SPRING_PROFILES_ACTIVE' --set-string 'env[0].value=prod' \
+  --set-string "env[1].name=MANUFACTURING_DB_URL" --set-string "env[1].value=jdbc:postgresql://${POSTGRES}/manufacturing" \
+  --set-string 'env[2].name=MANUFACTURING_DB_USER' --set-string 'env[2].value=manufacturing' \
+  --set-string 'env[3].name=MANUFACTURING_DB_PASSWORD' --set-string 'env[3].value=manufacturing' \
+  --set-string "env[4].name=KAFKA_BOOTSTRAP_SERVERS" --set-string "env[4].value=${KAFKA}" \
+  --set-string 'env[5].name=JAVA_TOOL_OPTIONS' --set-string 'env[5].value=-XX:MaxRAMPercentage=75.0'
+
+TLS_ARGS_WE="$(tls_args workeffort-svc)"
+# shellcheck disable=SC2086
+helm -n "${NS}" upgrade --install workeffort-svc "${CHART}" \
+  --set image.repository=workeffort-svc --set image.tag="${TAG}" \
+  --set replicaCount=1 --set autoscaling.enabled=false --set podDisruptionBudget.enabled=false \
+  ${TLS_ARGS_WE} \
+  --set-string 'env[0].name=SPRING_PROFILES_ACTIVE' --set-string 'env[0].value=prod' \
+  --set-string "env[1].name=WORKEFFORT_DB_URL" --set-string "env[1].value=jdbc:postgresql://${POSTGRES}/workeffort" \
+  --set-string 'env[2].name=WORKEFFORT_DB_USER' --set-string 'env[2].value=workeffort' \
+  --set-string 'env[3].name=WORKEFFORT_DB_PASSWORD' --set-string 'env[3].value=workeffort' \
+  --set-string "env[4].name=KAFKA_BOOTSTRAP_SERVERS" --set-string "env[4].value=${KAFKA}" \
+  --set-string 'env[5].name=JAVA_TOOL_OPTIONS' --set-string 'env[5].value=-XX:MaxRAMPercentage=75.0'
+
+TLS_ARGS_HR="$(tls_args humanres-svc)"
+# shellcheck disable=SC2086
+helm -n "${NS}" upgrade --install humanres-svc "${CHART}" \
+  --set image.repository=humanres-svc --set image.tag="${TAG}" \
+  --set replicaCount=1 --set autoscaling.enabled=false --set podDisruptionBudget.enabled=false \
+  ${TLS_ARGS_HR} \
+  --set-string 'env[0].name=SPRING_PROFILES_ACTIVE' --set-string 'env[0].value=prod' \
+  --set-string "env[1].name=HUMANRES_DB_URL" --set-string "env[1].value=jdbc:postgresql://${POSTGRES}/humanres" \
+  --set-string 'env[2].name=HUMANRES_DB_USER' --set-string 'env[2].value=humanres' \
+  --set-string 'env[3].name=HUMANRES_DB_PASSWORD' --set-string 'env[3].value=humanres' \
+  --set-string "env[4].name=KAFKA_BOOTSTRAP_SERVERS" --set-string "env[4].value=${KAFKA}" \
+  --set-string "env[5].name=HUMANRES_PARTY_BASE_URL" --set-string "env[5].value=http://party-svc.${NS}.svc:8080" \
+  --set-string 'env[6].name=JAVA_TOOL_OPTIONS' --set-string 'env[6].value=-XX:MaxRAMPercentage=75.0'
+
+# content-svc object storage: (re)issue the Garage ofbiz-s3 key — same
+# rotation semantics as platform/storage/20-verify.sh (secret prints only
+# at creation, so we recreate it on every deploy run).
+GARAGE_POD="garage-0"
+kubectl -n storage exec "${GARAGE_POD}" -- /garage -c /etc/garage.toml key info ofbiz-s3 >/dev/null 2>&1 \
+  && kubectl -n storage exec "${GARAGE_POD}" -- /garage -c /etc/garage.toml key delete --yes ofbiz-s3 >/dev/null 2>&1 || true
+GARAGE_KEY_OUT="$(kubectl -n storage exec "${GARAGE_POD}" -- /garage -c /etc/garage.toml key create ofbiz-s3 2>/dev/null)"
+GARAGE_KEY_ID="$(echo "${GARAGE_KEY_OUT}" | grep -oE 'GK[0-9a-f]+' | head -1)"
+GARAGE_SECRET="$(echo "${GARAGE_KEY_OUT}" | grep -oE 'Secret key: +[0-9a-zA-Z+/=]+' | sed 's/Secret key: *//')"
+kubectl -n storage exec "${GARAGE_POD}" -- /garage -c /etc/garage.toml key allow ofbiz-s3 --read --write --create-bucket >/dev/null 2>&1 || true
+kubectl -n storage exec "${GARAGE_POD}" -- /garage -c /etc/garage.toml bucket create ofbiz-content >/dev/null 2>&1 || true
+kubectl -n storage exec "${GARAGE_POD}" -- /garage -c /etc/garage.toml bucket allow --read --write ofbiz-content --key ofbiz-s3 >/dev/null 2>&1 || true
+
+TLS_ARGS_CONTENT="$(tls_args content-svc)"
+# shellcheck disable=SC2086
+helm -n "${NS}" upgrade --install content-svc "${CHART}" \
+  --set image.repository=content-svc --set image.tag="${TAG}" \
+  --set replicaCount=1 --set autoscaling.enabled=false --set podDisruptionBudget.enabled=false \
+  ${TLS_ARGS_CONTENT} \
+  --set-string 'env[0].name=SPRING_PROFILES_ACTIVE' --set-string 'env[0].value=prod' \
+  --set-string "env[1].name=CONTENT_DB_URL" --set-string "env[1].value=jdbc:postgresql://${POSTGRES}/content" \
+  --set-string 'env[2].name=CONTENT_DB_USER' --set-string 'env[2].value=content' \
+  --set-string 'env[3].name=CONTENT_DB_PASSWORD' --set-string 'env[3].value=content' \
+  --set-string "env[4].name=KAFKA_BOOTSTRAP_SERVERS" --set-string "env[4].value=${KAFKA}" \
+  --set-string 'env[5].name=CONTENT_S3_ENDPOINT' --set-string 'env[5].value=http://garage.storage.svc:3900' \
+  --set-string "env[6].name=CONTENT_S3_ACCESS_KEY" --set-string "env[6].value=${GARAGE_KEY_ID}" \
+  --set-string "env[7].name=CONTENT_S3_SECRET_KEY" --set-string "env[7].value=${GARAGE_SECRET}" \
+  --set-string 'env[8].name=CONTENT_S3_BUCKET' --set-string 'env[8].value=ofbiz-content' \
+  --set-string 'env[9].name=JAVA_TOOL_OPTIONS' --set-string 'env[9].value=-XX:MaxRAMPercentage=75.0'
+
+TLS_ARGS_MKT="$(tls_args marketing-svc)"
+# shellcheck disable=SC2086
+helm -n "${NS}" upgrade --install marketing-svc "${CHART}" \
+  --set image.repository=marketing-svc --set image.tag="${TAG}" \
+  --set replicaCount=1 --set autoscaling.enabled=false --set podDisruptionBudget.enabled=false \
+  ${TLS_ARGS_MKT} \
+  --set-string 'env[0].name=SPRING_PROFILES_ACTIVE' --set-string 'env[0].value=prod' \
+  --set-string "env[1].name=MARKETING_DB_URL" --set-string "env[1].value=jdbc:postgresql://${POSTGRES}/marketing" \
+  --set-string 'env[2].name=MARKETING_DB_USER' --set-string 'env[2].value=marketing' \
+  --set-string 'env[3].name=MARKETING_DB_PASSWORD' --set-string 'env[3].value=marketing' \
+  --set-string "env[4].name=KAFKA_BOOTSTRAP_SERVERS" --set-string "env[4].value=${KAFKA}" \
+  --set-string 'env[5].name=JAVA_TOOL_OPTIONS' --set-string 'env[5].value=-XX:MaxRAMPercentage=75.0'
+
+for deploy in identity-svc gateway audit-svc notification-svc search-svc party-svc product-svc inventory-svc order-svc billing-svc finance-svc manufacturing-svc workeffort-svc humanres-svc content-svc marketing-svc; do
   kubectl -n "${NS}" rollout status "deploy/${deploy}" --timeout=300s
 done
 
-echo "DONE — eleven services deployed (P1..P5: platform + party + product/inventory + order + billing/finance)"
+echo "DONE — sixteen services deployed (P1..P6: platform + party + product/inventory + order + billing/finance + long-tail)"

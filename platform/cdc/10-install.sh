@@ -14,6 +14,7 @@ kubectl -n "${NS}" rollout status deploy/monolith-db --timeout=300s
 echo "==> [2/4] P3 product/shipment + P4 order slices on the running monolith"
 sh "${SCRIPT_DIR}/12-extend-monolith-p3.sh"
 sh "${SCRIPT_DIR}/13-extend-monolith-p4.sh"
+sh "${SCRIPT_DIR}/14-extend-monolith-p6.sh"
 
 echo "==> [3/4] Debezium Connect"
 kubectl -n "${NS}" apply -f "${SCRIPT_DIR}/kafka-connect.yaml"
@@ -35,4 +36,5 @@ install_connector monolith-party "${SCRIPT_DIR}/party-connector.json"
 install_connector monolith-product "${SCRIPT_DIR}/product-connector.json"
 install_connector monolith-shipment "${SCRIPT_DIR}/shipment-connector.json"
 install_connector monolith-order "${SCRIPT_DIR}/order-connector.json"
+install_connector monolith-p6 "${SCRIPT_DIR}/p6-connector.json"
 echo "Installed. Verify with: ${SCRIPT_DIR}/20-verify.sh"

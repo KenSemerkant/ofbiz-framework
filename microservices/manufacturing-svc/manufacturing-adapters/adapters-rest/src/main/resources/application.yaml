@@ -1,0 +1,33 @@
+spring:
+  application:
+    name: manufacturing-svc
+  profiles:
+    # Local/dev boot works out of the box; production must set
+    # SPRING_PROFILES_ACTIVE=prod and provide the environment variables.
+    default: dev
+  threads:
+    virtual:
+      enabled: true
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+server:
+  port: 8080
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+manufacturing:
+  relay:
+    enabled: true
+  mrp:
+    enabled: true

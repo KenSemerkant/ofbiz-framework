@@ -73,6 +73,38 @@ spring:
                 - Path=/api/v1/gl/**
               metadata:
                 required-role: CUSTOMER
+            # P6-GATE: long-tail domain APIs served by the new services
+            # (rollback = flip gateway.<svc>.uri per service)
+            - id: manufacturing-svc
+              uri: ${gateway.manufacturing.uri:http://manufacturing-svc.ofbiz.svc:8080}
+              predicates:
+                - Path=/api/v1/boms/**,/api/v1/routings/**,/api/v1/mrp/**
+              metadata:
+                required-role: CUSTOMER
+            - id: workeffort-svc
+              uri: ${gateway.workeffort.uri:http://workeffort-svc.ofbiz.svc:8080}
+              predicates:
+                - Path=/api/v1/workefforts/**,/api/v1/timesheets/**
+              metadata:
+                required-role: CUSTOMER
+            - id: humanres-svc
+              uri: ${gateway.humanres.uri:http://humanres-svc.ofbiz.svc:8080}
+              predicates:
+                - Path=/api/v1/positions/**,/api/v1/employments/**,/api/v1/onboarding/**
+              metadata:
+                required-role: CUSTOMER
+            - id: content-svc
+              uri: ${gateway.content.uri:http://content-svc.ofbiz.svc:8080}
+              predicates:
+                - Path=/api/v1/contents/**
+              metadata:
+                required-role: CUSTOMER
+            - id: marketing-svc
+              uri: ${gateway.marketing.uri:http://marketing-svc.ofbiz.svc:8080}
+              predicates:
+                - Path=/api/v1/campaigns/**,/api/v1/tracking-codes/**,/api/v1/opportunities/**,/api/v1/attribution/**
+              metadata:
+                required-role: CUSTOMER
             - id: monolith
               uri: ${gateway.monolith.uri:https://ofbiz-monolith.ofbiz.svc:8443}
               predicates:

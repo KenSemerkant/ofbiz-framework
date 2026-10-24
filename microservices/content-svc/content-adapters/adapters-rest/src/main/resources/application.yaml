@@ -1,0 +1,39 @@
+spring:
+  application:
+    name: content-svc
+  profiles:
+    # Local/dev boot works out of the box; production must set
+    # SPRING_PROFILES_ACTIVE=prod and provide the environment variables.
+    default: dev
+  threads:
+    virtual:
+      enabled: true
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+server:
+  port: 8080
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+content:
+  relay:
+    enabled: true
+  s3:
+    # ADR-008: S3 API only. Local = Garage (platform/storage); cloud = S3
+    # endpoint+creds swap via the same environment variables.
+    endpoint: ${CONTENT_S3_ENDPOINT:http://localhost:3900}
+    region: ${CONTENT_S3_REGION:ofbiz-local}
+    access-key: ${CONTENT_S3_ACCESS_KEY:ofbiz-s3}
+    secret-key: ${CONTENT_S3_SECRET_KEY:ofbiz-s3-secret}
+    bucket: ${CONTENT_S3_BUCKET:ofbiz-content}
