@@ -242,12 +242,13 @@ against the live kind cluster; each story's green run is gate evidence.
 
 - **P8-GATE:** all journey specs green via platform/spa/40-run-e2e.sh; per-journey PASS output linked below.
   - T1+T2+T3 green: platform/spa/40-run-e2e.sh → P8 E2E EVIDENCE PASSED 2026-10-25T16:27:15Z (6/6: setup, parties ×2, catalog, p6, order-to-cash; gateway inventory route gateway:p8-inv; order status APPROVED asserted server-side)
+  - T4+T5+T6 green: 40-run-e2e.sh → P8 E2E EVIDENCE PASSED 2026-10-25T18:54:14Z (9/9; shipments gateway route gateway:p8-ship; returns journey asserts server-truth COMPLETED post approve+complete)
 - **T1 (M):** SPA harness — Vite/React/TS rebuild, existing 4 screens (login/parties/catalog/p6) ported, deployed via the spa manifest + local image (kind load + set image + rollout restart; spa was never helm-managed). AC: [x] specs for ported screens green [x] deployed image serves SPA on :4200 with OIDC login working
 - **T2 (M):** Playwright harness — tests/e2e with auth storageState, isolation (e2e-<ts>- prefixed IDs), accessibility locators. AC: [x] auth setup + ≥1 spec green [x] no shared state between tests
 - **T3 (L):** Order-to-cash journey — quote→convert→order→approve, stock seeding, invoice+payment capture, GL trial-balance visibility. AC: [x] spec green [x] exercises order/inventory/billing/finance via gateway in-journey (seeded party P1 / product MP1 referenced by ID; party+product APIs covered by the T1 ported-screen specs — suite-wide all six contexts run)
-- **T4 (M):** Returns journey — return→credit memo. AC: [ ] spec green
-- **T5 (M):** Plan-to-ship journey — MRP→production run→shipment. AC: [ ] spec green
-- **T6 (M):** Hire-to-retire journey — onboarding saga→position. AC: [ ] spec green
+- **T4 (M):** Returns journey — return→credit memo. AC: [x] spec green
+- **T5 (M):** Plan-to-ship journey — MRP run + shipment pack/ship (production-run execution has no REST surface — descope recorded; MRP proposals + shipment flow asserted). AC: [x] spec green
+- **T6 (M):** Hire-to-retire journey — onboarding saga→position. AC: [x] spec green
 - **T7 (M):** Campaign-to-attribution journey — campaign→tracked order→attribution report. AC: [ ] spec green
 - **T8 (S):** Content + calendar journeys. AC: [ ] specs green
 - **T9 (S):** Notification stub screen — send test request, assert queued-not-delivered (email leg infra-blocked on kind, P5). AC: [ ] spec green
