@@ -10,7 +10,7 @@ only inside `monolith/`.
 
 1. [IMPLEMENTATION.md](IMPLEMENTATION.md) — stories/gates (execution authority)
 2. [FUTURESTATE-ARCHITECTURE.md](FUTURESTATE-ARCHITECTURE.md) + [FUTURESTATE-LOWLEVEL.md](FUTURESTATE-LOWLEVEL.md) — target design
-3. [adr/](adr/) — decisions ADR-001..014; do not re-litigate, supersede via new ADR
+3. [adr/](adr/) — decisions ADR-001..015; do not re-litigate, supersede via new ADR
 4. [ARCHITECTURE.md](ARCHITECTURE.md)/[LOWLEVEL.md](LOWLEVEL.md)/[PRD.md](PRD.md) — current monolith (reference only)
 
 ## Architecture rules (ADR-007, ADR-013)
@@ -20,7 +20,7 @@ only inside `monolith/`.
   every module; inward-only dependencies.
 - **16 services** (11 domain + 5 platform). New capability goes in the
   owning bounded context — never invent a 17th service without an ADR.
-- **Java 21, Spring Boot 3.3.x**, virtual threads enabled.
+- **Java 21, Spring Boot 4.0.x** (ADR-015, security-forced bump from 3.3), virtual threads enabled.
 - **Database-per-service.** No cross-DB joins, no shared persistence
   module. Cross-context data = API call or event; references are IDs.
 - **Persistence:** JPA/Hibernate + Flyway. Entity XML/Delegator patterns

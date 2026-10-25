@@ -66,6 +66,20 @@ Routing rules:
 - `s3://ofbiz-archive/kafka-topics/` — final CDC topic dumps: same policy.
 - Service DB daily dumps: 30 days rolling (platform team owns the job).
 
+## Open items at handover (CG-7)
+
+Org-side (block final sign-off):
+- 30-day production soak before any prod flip (started 2026-10-23 — IMPLEMENTATION P4)
+- Ownership-matrix review by the five teams; paging-tool load; signatures below
+
+Engineering follow-ups (non-blocking):
+- Kafka broker-side ACL enforcement — least-privilege KafkaUsers are declared, but Strimzi/Kafka 4 combined-node simple authz ignored them locally (P0-F2-S2 `[~]`); enforce + verify on the cloud profile
+- Residual `ofbiz.SHIPMENT*` topics — identify the recreating principal (runbook above), then delete
+- party-svc OutboxRelay hardening — retry cap + bounded `findUnpublished` + `@Transactional` on outbox paths (carried since CG-2)
+- Istio mesh-span emission (KNOWN-ISSUE-1, Istio 1.31 minimal profile) — per-service OTel SDK is the contract; revisit on mesh upgrade
+- Shared local Postgres `max_connections` 300 (P5-GATE; restart pending consent)
+- OpenSearch local single node @ ~94% disk — size storage on the cloud profile
+
 ## Sign-off (CG-7)
 
 - [ ] Ownership matrix reviewed by all five proposed teams

@@ -311,11 +311,11 @@ Rollback per phase: gateway route flip back to monolith (CDC reverse-sync keeps 
 
 ## 11. Open Questions
 
-1. Repo layout: mono-repo vs repo-per-service (decide Phase 0).
-2. Exact billing/finance entity split review — accounting SME sign-off required (FUTURESTATE-LOWLEVEL.md §2 draft).
-3. Do any downstream consumers need the OFBiz SOAP surface preserved during strangler?
-4. Angular SPA hosting/deployment (separate repo + CDN vs served by gateway).
-5. Multi-tenancy: OFBiz delegator tenant support — required in target? (affects identity-svc + row-level isolation).
+1. **Resolved (Phase 0):** mono-repo — this repository, `microservices/<svc>/` per service. Repo-per-service split remains an optional post-program move.
+2. **Resolved by delivery (CG-5):** billing/finance split implemented per the per-service mapping docs and verified by the consistency checker (delta 0 — issues/P5-GATE.md). Formal accounting-SME sign-off is an org-side follow-up (OPS-HANDOVER.md).
+3. **Moot (CG-7):** monolith decommissioned; no SOAP consumers were migrated during the strangler. Any future SOAP need is a new gateway requirement, not a strangler constraint.
+4. **Resolved (Phase 2+):** SPA lives in `platform/spa/`, built and deployed with the stack, served through the gateway.
+5. **OPEN — multi-tenancy:** not required for single-tenant v1 and not implemented (identity-svc carries no tenant dimension). Must be decided before any multi-tenant offering; affects identity-svc plus row-level isolation in every service DB.
 
 ---
 

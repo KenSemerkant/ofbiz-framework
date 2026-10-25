@@ -104,3 +104,7 @@ RACI (condensed): squads **R**esponsible for stories; stream leads **A**ccountab
 ---
 
 *v1, 2026-10-16. Re-baseline only at gate reviews. Sources: IMPLEMENTATION.md (stories/gates), FUTURESTATE-ARCHITECTURE.md §10-11 (open questions tracked as risks R1, R7).*
+
+## 9. Final Status (post-CG-7, 2026-10-24)
+
+All gates CG-0..CG-7 passed 2026-10-20..24 on the local kind staging cluster; never re-baselined after v1. R1 closed by delivery evidence (CG-5 consistency delta 0; formal SME sign-off remains org-side). R2/R9 closed with the CDC layer at decommission — checkers + rollback drills ran at every gate, then the bridge was deleted. R6 perf budgets met at gate time (e.g. search p99 14ms @ 100k docs). Remaining work: org-side handover actions (OPS-HANDOVER.md) and cloud-profile hardening (Kafka ACL enforcement, OpenSearch storage sizing).

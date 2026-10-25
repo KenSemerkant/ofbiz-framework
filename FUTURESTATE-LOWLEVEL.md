@@ -7,7 +7,7 @@
 
 ## 1. Repository & Module Scaffolding
 
-**Mono-repo layout (default pending Open Question §11.1):**
+**Mono-repo layout (decided Phase 0; Open Question §11.1 resolved):**
 
 ```
 ofbiz-msa/
@@ -214,4 +214,4 @@ E2E per release: staging K8s, seeded data, critical journey `place order → res
 
 ---
 
-*Blueprint only — every section is elaborated by the owning service's spec before any code. Entity split tables (§2) are drafts pending SME review (FUTURESTATE-ARCHITECTURE.md §11.2).*
+*Design-era blueprint, retained as reference. The §2 entity-split drafts were superseded by per-service mapping docs (`microservices/<svc>/MAPPING.md`), each verified by its phase-gate consistency checker (CG-2..CG-7).*

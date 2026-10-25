@@ -75,7 +75,7 @@ Native (non-docker): `cd monolith && ./gradlew ofbiz` (requires JDK 17; run `sh 
 | Domain (11) | party, product, order, billing, finance, inventory, manufacturing, content, workeffort, humanres, marketing |
 | Platform (5) | identity, gateway, search, notification, audit |
 
-Each `microservices/<svc>/` folder is the future home of that service (multi-repo split is open question §11.1). Service purposes, owned entity slices, API surfaces, and event flows: FUTURESTATE-ARCHITECTURE.md §5–§6.
+Each `microservices/<svc>/` folder holds a delivered service (mono-repo decided Phase 0 — §11.1 resolved; repo-per-service split stays optional post-program). Service purposes, owned entity slices, API surfaces, and event flows: FUTURESTATE-ARCHITECTURE.md §5–§6.
 
 ## Migration Roadmap (strangler)
 
@@ -93,8 +93,8 @@ Cutover/rollback gates per phase: FUTURESTATE-ARCHITECTURE.md §10.
 
 ## Status
 
-- Current: monolith runs (docker demo verified on this machine)
-- Target: **design complete, zero implementation** — per-service specs are the next step
+- Current: **target stack live** — all 16 services delivered, gates CG-0..CG-7 passed 2026-10-20..24 (local kind staging); monolith decommissioned (scaled to zero, archived to `s3://ofbiz-archive`)
+- Remaining: org-side actions ([OPS-HANDOVER.md](OPS-HANDOVER.md)) — 30-day production soak, sign-off, paging-tool load
 - Note: fork CI workflows moved with `monolith/.github` (root-path-bound, would need path fixes to re-enable)
 
 ## Contributing
