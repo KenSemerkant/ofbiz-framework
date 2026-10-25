@@ -5,7 +5,7 @@ type Quote = { quoteId: string; status: string };
 type Order = { orderId: string; status: string; grandTotal: number; currencyUomId: string };
 type Invoice = { invoiceId: string };
 type Payment = { paymentId: string; status: string };
-const runId = () => 'e2e-' + Date.now().toString(36) + '-';
+const runId = () => 'e2e-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8) + '-';
 
 export default function OrderToCash() {
   const [facility, setFacility] = useState('');

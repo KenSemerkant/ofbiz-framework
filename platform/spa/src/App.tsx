@@ -5,6 +5,7 @@ import Parties from './screens/Parties';
 import Catalog from './screens/Catalog';
 import P6 from './screens/P6';
 import OrderToCash from './screens/OrderToCash';
+import Returns from './screens/Returns';
 
 export default function App() {
   const [params] = useSearchParams();
@@ -32,6 +33,9 @@ export default function App() {
         <NavLink to="/catalog">Catalog</NavLink>
         <NavLink to="/p6">Long-tail</NavLink>
         <NavLink to="/order-to-cash">Order-to-cash</NavLink>
+        <NavLink to="/returns">Returns</NavLink>
+        <NavLink to="/plan-to-ship">Plan-to-ship</NavLink>
+        <NavLink to="/hire-to-retire">Hire-to-retire</NavLink>
         {!signedIn
           ? <button data-testid="signin" onClick={() => void login()}>Sign in</button>
           : <span data-testid="signed-in">signed in</span>}
@@ -44,6 +48,9 @@ export default function App() {
         <Route path="/catalog" element={<Catalog />} />
         <Route path="/p6" element={<P6 />} />
         <Route path="/order-to-cash" element={<OrderToCash />} />
+        <Route path="/returns" element={<Returns />} />
+        <Route path="/plan-to-ship" element={<h1>Plan-to-ship</h1>} />
+        <Route path="/hire-to-retire" element={<h1>Hire-to-retire</h1>} />
       </Routes>
     </>
   );
