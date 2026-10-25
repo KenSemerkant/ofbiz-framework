@@ -246,7 +246,7 @@ against the live kind cluster; each story's green run is gate evidence.
 - **T1 (M):** SPA harness — Vite/React/TS rebuild, existing 4 screens (login/parties/catalog/p6) ported, deployed via the spa manifest + local image (kind load + set image + rollout restart; spa was never helm-managed). AC: [x] specs for ported screens green [x] deployed image serves SPA on :4200 with OIDC login working
 - **T2 (M):** Playwright harness — tests/e2e with auth storageState, isolation (e2e-<ts>- prefixed IDs), accessibility locators. AC: [x] auth setup + ≥1 spec green [x] no shared state between tests
 - **T3 (L):** Order-to-cash journey — quote→convert→order→approve, stock seeding, invoice+payment capture, GL trial-balance visibility. AC: [x] spec green [x] exercises order/inventory/billing/finance via gateway in-journey (seeded party P1 / product MP1 referenced by ID; party+product APIs covered by the T1 ported-screen specs — suite-wide all six contexts run)
-- **T4 (M):** Returns journey — return→credit memo. AC: [x] spec green
+- **T4 (M):** Returns journey — order→return with server-truth COMPLETED (credit memo is an outbox event, `order.creditmemo.issued.v1` — asserted by order-svc service tests, not E2E). AC: [x] spec green
 - **T5 (M):** Plan-to-ship journey — MRP run + shipment pack/ship (production-run execution has no REST surface — descope recorded; MRP proposals + shipment flow asserted). AC: [x] spec green
 - **T6 (M):** Hire-to-retire journey — onboarding saga→position. AC: [x] spec green
 - **T7 (M):** Campaign-to-attribution journey — campaign→tracked order→attribution report. AC: [ ] spec green

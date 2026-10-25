@@ -44,7 +44,7 @@ export default function HireToRetire() {
       await api(`/api/v1/positions/${positionId}`, { method: 'PUT',
         body: { emplPositionTypeId: 'ENGINEER', statusId: 'INACTIVE' } });
       const saved = await api<{ emplPositionId: string; statusId?: string }>(`/api/v1/positions/${positionId}`);
-      setPosition({ emplPositionId: saved.emplPositionId, statusId: saved.statusId ?? 'INACTIVE' });
+      setPosition({ emplPositionId: saved.emplPositionId, statusId: saved.statusId ?? '' });
     } catch (e) { setErr((e as Error).message); }
   };
 
