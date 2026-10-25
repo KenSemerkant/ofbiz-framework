@@ -1,6 +1,5 @@
-# CG-2: SPA skeleton (nginx, no build step). Served on :4200 to match the
-# gateway CORS allow-list and the identity redirect URI. The index.html
-# ConfigMap is created by 10-install.sh (kubectl create configmap --from-file).
+# P8: built SPA image (Vite dist in nginx). Served on :4200 to match the
+# gateway CORS allow-list and the identity redirect URI.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -16,18 +15,9 @@ spec:
     spec:
       containers:
         - name: nginx
-          image: nginx:1.27-alpine
+          image: spa:local
+          imagePullPolicy: IfNotPresent
           ports: [{containerPort: 80}]
-          volumeMounts:
-            - {name: index, mountPath: /usr/share/nginx/html}
-            - {name: conf, mountPath: /etc/nginx/conf.d}
-      volumes:
-        - name: index
-          configMap: {name: spa-index}
-        - name: conf
-          configMap:
-            name: spa-nginx-conf
-            items: [{key: default.conf, path: default.conf}]
 ---
 apiVersion: v1
 kind: Service
