@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { runPrefix } from '../helpers/ids';
 
-test('returns: place order → return line → read back RECEIVED (server truth)', async ({ page }) => {
+test('returns: order→approve→complete→return, server-truth COMPLETED', async ({ page }) => {
   const run = runPrefix();
   await page.goto('/returns');
 

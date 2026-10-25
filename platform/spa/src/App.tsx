@@ -6,6 +6,7 @@ import Catalog from './screens/Catalog';
 import P6 from './screens/P6';
 import OrderToCash from './screens/OrderToCash';
 import Returns from './screens/Returns';
+import PlanToShip from './screens/PlanToShip';
 
 export default function App() {
   const [params] = useSearchParams();
@@ -49,7 +50,7 @@ export default function App() {
         <Route path="/p6" element={<P6 />} />
         <Route path="/order-to-cash" element={<OrderToCash />} />
         <Route path="/returns" element={<Returns />} />
-        <Route path="/plan-to-ship" element={<h1>Plan-to-ship</h1>} />
+        <Route path="/plan-to-ship" element={<PlanToShip />} />
         <Route path="/hire-to-retire" element={<h1>Hire-to-retire</h1>} />
       </Routes>
     </>
