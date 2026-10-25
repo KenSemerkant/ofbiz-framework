@@ -1,5 +1,5 @@
 import { Routes, Route, NavLink, useSearchParams, useNavigate } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { login, handleCallback } from './auth';
 
 export default function App() {
@@ -7,10 +7,20 @@ export default function App() {
   const navigate = useNavigate();
   const code = params.get('code');
   const signedIn = !!localStorage.getItem('ofbiz.token');
+  const handled = useRef(false);
+  const [authError, setAuthError] = useState<string | null>(null);
   useEffect(() => {
-    if (!code) return;
-    void handleCallback(code).then(ok => navigate(ok ? '/parties' : '/', { replace: true }));
-  }, [code, navigate]);
+    const error = params.get('error');
+    if (error) {
+      setAuthError(error);
+      return;
+    }
+    if (!code || handled.current) return;
+    handled.current = true;
+    void handleCallback(code, params.get('state') ?? '').then(ok =>
+      navigate(ok ? '/parties' : '/', { replace: true })
+    );
+  }, [code, navigate, params]);
   return (
     <>
       <nav>
@@ -22,6 +32,7 @@ export default function App() {
           ? <button data-testid="signin" onClick={() => void login()}>Sign in</button>
           : <span data-testid="signed-in">signed in</span>}
       </nav>
+      {authError && <p className="err" data-testid="auth-error">{authError}</p>}
       <Routes>
         <Route path="/" element={<h1>OFBiz journeys</h1>} />
         <Route path="/login/oauth2/code/gateway" element={<h1>OFBiz journeys</h1>} />

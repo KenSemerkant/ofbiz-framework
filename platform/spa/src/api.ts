@@ -1,15 +1,21 @@
-const GATEWAY = location.origin.replace(/:\d+$/, ':8080');
+import { GATEWAY } from './config';
 
-export async function api<T>(path: string, init?: RequestInit & { body?: unknown }): Promise<T> {
+export async function api<T>(
+  path: string,
+  init?: Omit<RequestInit, 'body'> & { body?: unknown },
+): Promise<T> {
   const token = localStorage.getItem('ofbiz.token');
+  if (!token) throw new Error('not signed in');
+  const { body, ...rest } = init ?? {};
   const res = await fetch(GATEWAY + path, {
-    ...init,
+    ...rest,
     headers: {
+      ...(rest.headers as HeadersInit | undefined),
       Authorization: 'Bearer ' + token,
-      ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
     },
-    ...(init?.body ? { body: JSON.stringify(init.body) } : {}),
+    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   });
-  if (!res.ok) throw new Error(`${init?.method ?? 'GET'} ${path} -> ${res.status}`);
+  if (!res.ok) throw new Error(`${rest.method ?? 'GET'} ${path} -> ${res.status}`);
   return res.status === 204 ? (undefined as T) : res.json();
 }
