@@ -1,0 +1,6 @@
+{
+  "name": "ofbiz-e2e",
+  "private": true,
+  "scripts": { "test": "playwright test", "test:dot": "playwright test --reporter=dot" },
+  "devDependencies": { "@playwright/test": "^1.47.2", "@types/node": "^22.0.0", "typescript": "^5.6.3" }
+}
