@@ -322,7 +322,7 @@ git commit -m "feat(spa): Vite+React+TS scaffold — OIDC PKCE auth (localStorag
 import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
-  testDir: './specs',
+  testDir: '.',
   timeout: 30_000,
   reporter: process.env.CI ? 'dot' : 'list',
   use: { baseURL: process.env.E2E_BASE_URL ?? 'http://localhost:4200' },
@@ -330,6 +330,7 @@ export default defineConfig({
     { name: 'setup', testMatch: /auth\.setup\.ts/ },
     {
       name: 'e2e',
+      testMatch: /specs\/.*\.spec\.ts/,
       dependencies: ['setup'],
       use: { storageState: 'playwright/.auth/user.json' },
     },
@@ -337,6 +338,8 @@ export default defineConfig({
   outputDir: 'playwright/.artifacts',
 });
 ```
+
+NOTE: original plan had `testDir: './specs'`, which excluded auth.setup.ts (package root) from discovery — setup project ran 0 tests and e2e failed ENOENT on the storage state. Fixed during Task 3 execution (f113e12b2f); this block reflects the accepted shape.
 
 - [ ] **Step 4: helpers/ids.ts — run-unique IDs, no shared state**
 
