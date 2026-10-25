@@ -10,6 +10,13 @@ spring:
     gateway:
       server:
         webflux:
+          filter:
+            secure-headers:
+              # SecureHeaders defaults Referrer-Policy to no-referrer, which
+              # makes browsers send `Origin: null` on the OIDC login form
+              # POST — Spring Security's CSRF Origin check 403s it. Use the
+              # browser default instead.
+              referrer-policy: strict-origin-when-cross-origin
           default-filters:
             - SecureHeaders
           globalcors:
@@ -20,6 +27,20 @@ spring:
                 allowedMethods: "*"
                 allowedHeaders: "*"
           routes:
+            # OIDC passthrough: the SPA sends the browser here for the
+            # auth-code+PKCE dance (login page, authorize, token, JWKS).
+            # Public by design — no required-role.
+            - id: identity-svc
+              uri: ${gateway.identity.uri:http://identity-svc.ofbiz.svc:8080}
+              predicates:
+                - Path=/oauth2/**,/login/**,/logout/**,/.well-known/**
+              filters:
+                # Identity builds redirects from its in-cluster host; the
+                # browser must land back on the public origin. Rewrite the
+                # internal host out of Location headers (dev default:
+                # localhost:8080 port-forward; set gateway.public-origin to
+                # the ingress URL on other profiles).
+                - RewriteResponseHeader=Location, ^https?://identity-svc(\.ofbiz\.svc)?(:\d+)?, ${gateway.public-origin:http://localhost:8080}
             - id: demo-svc
               uri: ${gateway.demo.uri:http://localhost:18081}
               predicates:

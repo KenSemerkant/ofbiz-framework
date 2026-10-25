@@ -37,7 +37,14 @@
   <script>
     // dev: SPA on :4200, gateway on :8080 (same host)
     const GATEWAY = location.origin.replace(/:\d+$/, ':8080');
-    const REDIRECT = location.origin + '/index.html';
+    // Registered redirect URI on identity-svc (GATEWAY_REDIRECT_URI env).
+    // nginx serves index.html for any path (try_files), so this callback
+    // path lands back on this page with ?code=... below.
+    const REDIRECT = location.origin + '/login/oauth2/code/gateway';
+    // dev skeleton only: the registered client authenticates via
+    // client_secret_basic (PKCE still enforced); the SPA is trusted with
+    // the dev-local secret. A public client needs its own registration.
+    const BASIC = 'Basic ' + btoa('gateway:dev-local-secret');
 
     const b64url = buf => btoa(String.fromCharCode(...new Uint8Array(buf)))
       .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -59,7 +66,7 @@
       (async () => {
         const res = await fetch(GATEWAY + '/oauth2/token', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded', Authorization: BASIC },
           body: new URLSearchParams({ grant_type: 'authorization_code',
             code: params.get('code'), client_id: 'gateway', redirect_uri: REDIRECT,
             code_verifier: sessionStorage.getItem('verifier') }) });

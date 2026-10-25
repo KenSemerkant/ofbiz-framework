@@ -1,6 +1,12 @@
 # Production profile: every credential comes from the environment and has no
 # fallback, so a missing variable fails startup instead of booting with a
 # known development secret.
+server:
+  # The SPA reaches identity through the gateway (localhost:8080 or the
+  # istio ingress). Honor X-Forwarded-Host/Port (SCG sets them) so login
+  # redirects point at the external origin, not identity-svc.ofbiz.svc.
+  forward-headers-strategy: framework
+
 spring:
   datasource:
     url: ${IDENTITY_DB_URL}
