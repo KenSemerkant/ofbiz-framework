@@ -251,7 +251,7 @@ against the live kind cluster; each story's green run is gate evidence.
 - **T6 (M):** Hire-to-retire journey — onboarding saga→position. AC: [x] spec green
 - **T7 (M):** Campaign-to-attribution journey — campaign→tracked order→attribution report. AC: [ ] spec green
 - **T8 (S):** Content + calendar journeys. AC: [ ] specs green
-- **T9 (S):** Notification stub screen — send test request, assert queued-not-delivered (email leg infra-blocked on kind, P5). AC: [ ] spec green
+- **T9 (S):** Notification — DESCOPE (recorded): notification-svc exposes no REST surface (pure Kafka consumer + SMTP adapter; zero @RestController in non-test sources). No screen possible without inventing a platform surface. Delivery/DLQ behavior covered by service tests (NotificationDeliveryTest, NotificationDlqTest, P1-F3). Email leg remains infra-blocked on kind (P5). AC: [x] descope recorded with evidence
 
 ---
 
