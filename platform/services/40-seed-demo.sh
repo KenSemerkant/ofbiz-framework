@@ -78,6 +78,12 @@ produce search.doc.indexed.v1 \
   '{"docId":"demo-party-acme","fields":{"name":"Acme Corporation party","category":"party","country":"DE"}}'
 echo "  produced 5 documents"
 
+echo "==> 3b. demo party CUSTOMER role (party-svc; identity projection picks it up <5s)"
+kubectl -n "${NS}" exec "${TOOLS}" -- curl -s -o /dev/null -X POST http://party-svc:8080/api/v1/parties \
+  -H 'Content-Type: application/json' \
+  -d '{"partyId":"demo-party-user","kind":"PERSON","firstName":"Demo","lastName":"User","roles":["CUSTOMER"]}'
+echo "  demo-party-user upserted with CUSTOMER (gateway required-role on SPA routes)"
+
 echo "==> 4. notification demo emails (mailhog sink)"
 TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 produce notification.requested.v1 \

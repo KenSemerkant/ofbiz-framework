@@ -29,7 +29,7 @@
         sh {{ repo_root }}/platform/bootstrap/00-bootstrap.sh
         sh {{ repo_root }}/platform/bootstrap/10-verify-mtls.sh
       register: mesh
-      changed_when: "'PASS' in mesh.stdout"
+      changed_when: "'PASS' in (mesh.stdout | default(''))"
       tags: [mesh, istio]
 
     - name: Kafka + Apicurio schema registry (P0-F2-S1)
@@ -38,7 +38,7 @@
         sh {{ repo_root }}/platform/kafka/20-verify.sh
         sh {{ repo_root }}/platform/kafka/21-verify-broker-kill.sh
       register: kafka
-      changed_when: "'created' in kafka.stdout"
+      changed_when: "'created' in (kafka.stdout | default(''))"
       tags: [kafka]
 
     - name: Topic namespace + DLQ + ACL manifests (P0-F2-S2)

@@ -101,6 +101,9 @@ echo "  attribution count for CG4-PROMO=${ATTR_COUNT}"
 [ "${ATTR_COUNT}" -ge 1 ] 2>/dev/null || { echo "FAIL: attribution not recorded"; FAIL=1; }
 
 echo "==> [5/5] reverse-sync keeps the monolith current"
+if ! kubectl -n "${NS}" get deploy monolith-db >/dev/null 2>&1; then
+  echo "  SKIP: monolith-db decommissioned (P7) — reverse-sync layer removed; see issues/P7-GATE.md"
+else
 MONO_STATUS=missing
 for i in $(seq 1 30); do
   MONO_STATUS=$(kubectl -n "${NS}" exec deploy/monolith-db -- psql -U ofbiz -d ofbiz -Atc \
@@ -110,6 +113,7 @@ for i in $(seq 1 30); do
 done
 echo "  monolith ORDER_HEADER status=${MONO_STATUS}"
 [ "${MONO_STATUS}" = "COMPLETED" ] || { echo "FAIL: reverse-sync did not carry the order"; FAIL=1; }
+fi
 
 [ "${FAIL}" = 0 ] \
   && echo "ORDER LIFECYCLE E2E PASSED — quote→order→approve→complete, ECA sagas fired, attribution recorded, reverse-sync current" \

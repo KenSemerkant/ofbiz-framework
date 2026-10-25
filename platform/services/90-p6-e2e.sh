@@ -27,11 +27,16 @@ X() { kubectl -n "${NS}" exec -i "${TOOLS}" -- sh -c "$1"; }
 
 echo "==> [1/5] T1 MRP parity (dataset 48-seed, MrpServices netting)"
 # reference: same netting on the monolith MRP_EVENT table
-REF=$(kubectl -n "${NS}" exec deploy/monolith-db -- psql -U ofbiz -d ofbiz -Atc "
+REF=""
+if kubectl -n "${NS}" get deploy monolith-db >/dev/null 2>&1; then
+  REF=$(kubectl -n "${NS}" exec deploy/monolith-db -- psql -U ofbiz -d ofbiz -Atc "
   SELECT string_agg(product_id || '=' || shortage, ' ' ORDER BY product_id) FROM (
     SELECT \"PRODUCT_ID\" AS product_id, GREATEST(-(sum(CASE \"EVENT_TYPE\" WHEN 'DEMAND' THEN -\"QUANTITY\"::numeric ELSE \"QUANTITY\"::numeric END)), 0)::int AS shortage
     FROM \"MRP_EVENT\" WHERE \"MRP_ID\" LIKE 'CG6-%' GROUP BY \"PRODUCT_ID\") t WHERE shortage > 0;")
-echo "  monolith reference netting: ${REF:-<none>}"
+  echo "  monolith reference netting: ${REF:-<none>}"
+else
+  echo "  SKIP parity: monolith-db decommissioned (P7) — MRP run executed as smoke check only"
+fi
 MRP=$(X "curl -s -X POST http://manufacturing-svc:8080/api/v1/mrp/run -H 'Content-Type: application/json' -d '{}'")
 echo "  manufacturing-svc run: $(echo "${MRP}" | head -c 300)"
 for pair in ${REF}; do
