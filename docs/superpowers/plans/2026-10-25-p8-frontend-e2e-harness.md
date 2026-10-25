@@ -32,7 +32,7 @@
 Append exactly:
 
 ```markdown
-## P8 — Frontend E2E program (journey-driven SPA + Playwright)
+# PHASE 8 — Frontend E2E program (journey-driven SPA + Playwright)
 
 Spec: docs/superpowers/specs/2026-10-25-frontend-e2e-program-design.md.
 Rebuild platform/spa as Vite+React+TS; Playwright suite at tests/e2e run
