@@ -8,6 +8,7 @@ import OrderToCash from './screens/OrderToCash';
 import Returns from './screens/Returns';
 import PlanToShip from './screens/PlanToShip';
 import HireToRetire from './screens/HireToRetire';
+import Campaign from './screens/Campaign';
 
 export default function App() {
   const [params] = useSearchParams();
@@ -38,6 +39,9 @@ export default function App() {
         <NavLink to="/returns">Returns</NavLink>
         <NavLink to="/plan-to-ship">Plan-to-ship</NavLink>
         <NavLink to="/hire-to-retire">Hire-to-retire</NavLink>
+        <NavLink to="/campaign">Campaign</NavLink>
+        <NavLink to="/content">Content</NavLink>
+        <NavLink to="/calendar">Calendar</NavLink>
         {!signedIn
           ? <button data-testid="signin" onClick={() => void login()}>Sign in</button>
           : <span data-testid="signed-in">signed in</span>}
@@ -53,6 +57,9 @@ export default function App() {
         <Route path="/returns" element={<Returns />} />
         <Route path="/plan-to-ship" element={<PlanToShip />} />
         <Route path="/hire-to-retire" element={<HireToRetire />} />
+        <Route path="/campaign" element={<Campaign />} />
+        <Route path="/content" element={<h1>Content</h1>} />
+        <Route path="/calendar" element={<h1>Calendar</h1>} />
       </Routes>
     </>
   );
