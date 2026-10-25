@@ -24,8 +24,8 @@ export default function Catalog() {
       const at = encodeURIComponent(new Date().toISOString());
       const { price } = await api<{ price: string }>(`/api/v1/products/${productId}/price?currency=USD&at=${at}`);
       setPrices(p => ({ ...p, [productId]: price + ' USD' }));
-    } catch {
-      setPrices(p => ({ ...p, [productId]: 'n/a' }));
+    } catch (e) {
+      setPrices(p => ({ ...p, [productId]: 'n/a (' + (e as Error).message + ')' }));
     }
   };
 

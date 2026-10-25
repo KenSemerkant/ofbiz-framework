@@ -8,14 +8,17 @@ export default function Parties() {
   const [role, setRole] = useState('CUSTOMER');
   const [rows, setRows] = useState<Party[]>([]);
   const [msg, setMsg] = useState('');
+  const [count, setCount] = useState('');
 
   const search = async () => {
     try {
       const page = await api<Page<Party>>(`/api/v1/parties?role=${encodeURIComponent(role)}&page=0&size=20`);
       setRows(page.items);
-      setMsg(`${page.totalElements} parties (page ${page.page + 1}/${page.totalPages})`);
+      setCount(`${page.totalElements} parties (page ${page.page + 1}/${page.totalPages})`);
+      setMsg('');
     } catch (e) {
       setMsg((e as Error).message);
+      setCount('');
     }
   };
 
@@ -33,7 +36,7 @@ export default function Parties() {
           {rows.map(p => <tr key={p.partyId}><td>{p.partyId}</td><td>{p.kind}</td><td>{p.displayName}</td></tr>)}
         </tbody>
       </table>
-      <p data-testid="parties-count">{msg}</p>
+      <p data-testid="parties-count">{count}</p>
     </section>
   );
 }
