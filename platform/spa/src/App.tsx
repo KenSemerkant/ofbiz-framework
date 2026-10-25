@@ -4,6 +4,7 @@ import { login, handleCallback } from './auth';
 import Parties from './screens/Parties';
 import Catalog from './screens/Catalog';
 import P6 from './screens/P6';
+import OrderToCash from './screens/OrderToCash';
 
 export default function App() {
   const [params] = useSearchParams();
@@ -42,7 +43,7 @@ export default function App() {
         <Route path="/parties" element={<Parties />} />
         <Route path="/catalog" element={<Catalog />} />
         <Route path="/p6" element={<P6 />} />
-        <Route path="/order-to-cash" element={<h1>order-to-cash (Task 6)</h1>} />
+        <Route path="/order-to-cash" element={<OrderToCash />} />
       </Routes>
     </>
   );
