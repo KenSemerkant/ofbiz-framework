@@ -975,6 +975,29 @@ git commit -m "feat(spa): order-to-cash journey — quote→order→approve→in
 
 ---
 
+### Task 6a: Gateway route for inventory-svc (plan amendment, discovered during Task 6)
+
+**Files:**
+- Modify: `microservices/gateway/src/main/resources/application.yaml` (add route block)
+- Modify: `platform/spa/10-install.sh` (same-tag redeploy no-op fix)
+
+The order-to-cash journey seeds stock through the gateway (architecture: north-south = gateway only), but the gateway has no inventory route (verified 404 + missing CORS headers). Add:
+
+```yaml
+- id: inventory-svc
+  uri: ${gateway.inventory.uri:http://inventory-svc.ofbiz.svc:8080}
+  predicates:
+    - Path=/api/v1/inventory-items/**
+  metadata:
+    required-role: CUSTOMER
+```
+
+required-role CUSTOMER matches the other domain routes the demo journeys use (dev kind profile; machine tokens still 403). Redeploy gateway per platform/services/10-deploy.sh pattern, rebuild spa image, rerun full suite (expect 6/6), then commit journey + route + script fix (separate commits).
+
+Also fix `platform/spa/10-install.sh` same-tag no-op: append `kubectl -n "${NS}" rollout restart deploy/spa` after `set image` (same tag → set image is a no-op; restart forces pod replacement).
+
+---
+
 ### Task 7: Runner script + P8 evidence
 
 **Files:**
