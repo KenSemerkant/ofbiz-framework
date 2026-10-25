@@ -76,6 +76,13 @@ spring:
                 - Path=/api/v1/inventory-items/**
               metadata:
                 required-role: CUSTOMER
+            # P8 plan-2 Task 1: shipments for the plan-to-ship journey (north-south via gateway only)
+            - id: inventory-shipments
+              uri: ${gateway.inventory.uri:http://inventory-svc.ofbiz.svc:8080}
+              predicates:
+                - Path=/api/v1/shipments/**
+              metadata:
+                required-role: CUSTOMER
             # P4-GATE write cutover: order writes go to order-svc
             - id: order-svc
               uri: ${gateway.order.uri:http://order-svc.ofbiz.svc:8080}
