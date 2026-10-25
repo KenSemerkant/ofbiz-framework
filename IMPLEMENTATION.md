@@ -234,6 +234,25 @@ Each track reuses the Phase-2 CDC template. Per-track CG = Phase-2 pattern (own 
 
 ---
 
+## P8 — Frontend E2E program (journey-driven SPA + Playwright)
+
+Spec: docs/superpowers/specs/2026-10-25-frontend-e2e-program-design.md.
+Rebuild platform/spa as Vite+React+TS; Playwright suite at tests/e2e run
+against the live kind cluster; each story's green run is gate evidence.
+
+- **P8-GATE:** all journey specs green via platform/spa/40-run-e2e.sh; per-journey PASS output linked below.
+- **T1 (M):** SPA harness — Vite/React/TS rebuild, existing 4 screens (login/parties/catalog/p6) ported, deployed via existing helm chart (image swap). AC: [ ] specs for ported screens green [ ] deployed image serves SPA on :4200 with OIDC login working
+- **T2 (M):** Playwright harness — tests/e2e with auth storageState, isolation (e2e-<ts>- prefixed IDs), accessibility locators. AC: [ ] auth setup + ≥1 spec green [ ] no shared state between tests
+- **T3 (L):** Order-to-cash journey — quote→convert→order→approve, stock seeding, invoice+payment capture, GL trial-balance visibility. AC: [ ] spec green [ ] exercises party/product/order/inventory/billing/finance via gateway
+- **T4 (M):** Returns journey — return→credit memo. AC: [ ] spec green
+- **T5 (M):** Plan-to-ship journey — MRP→production run→shipment. AC: [ ] spec green
+- **T6 (M):** Hire-to-retire journey — onboarding saga→position. AC: [ ] spec green
+- **T7 (M):** Campaign-to-attribution journey — campaign→tracked order→attribution report. AC: [ ] spec green
+- **T8 (S):** Content + calendar journeys. AC: [ ] specs green
+- **T9 (S):** Notification stub screen — send test request, assert queued-not-delivered (email leg infra-blocked on kind, P5). AC: [ ] spec green
+
+---
+
 ## Cross-Phase Working Agreements
 
 1. **Definition of Done (every story):** AC met with evidence link, CI green, contracts backward-compatible, dashboards updated, docs updated (this file + service README).
