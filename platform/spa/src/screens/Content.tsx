@@ -24,7 +24,7 @@ export default function Content() {
       await api(`/api/v1/contents/${contentId}/publish`, { method: 'POST' });
       // server truth: read back rather than trusting the non-throw path
       const saved = await api<{ contentId: string; statusId?: string }>(`/api/v1/contents/${contentId}`);
-      setStatus(saved.statusId ? String(saved.statusId).toLowerCase() : 'published');
+      setStatus(saved.statusId ? String(saved.statusId).toLowerCase() : '(no statusId in readback)');
     } catch (e) { setErr((e as Error).message); }
   };
 
