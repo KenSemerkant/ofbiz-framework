@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { api } from '../api';
 
 type Quote = { quoteId: string; status: string };
-type Order = { orderId: string; status: string; grandTotal: string; currencyUomId: string };
+type Order = { orderId: string; status: string; grandTotal: number; currencyUomId: string };
 type Invoice = { invoiceId: string };
 type Payment = { paymentId: string; status: string };
 const runId = () => 'e2e-' + Date.now().toString(36) + '-';
@@ -18,10 +18,12 @@ export default function OrderToCash() {
 
   const customerId = 'P1';
   const productId = 'MP1';
+  const UNIT_PRICE = '9.99';
   const qty = 2;
 
   const seedStock = async () => {
     try {
+      setErr('');
       const itemId = runId() + 'inv';
       await api('/api/v1/inventory-items', { method: 'POST',
         body: { inventoryItemId: itemId, productId, facilityId: facility } });
@@ -32,6 +34,7 @@ export default function OrderToCash() {
 
   const createQuote = async () => {
     try {
+      setErr('');
       setQuote(await api<Quote>('/api/v1/quotes', { method: 'POST',
         body: { customerId, currencyUomId: 'USD',
           lines: [{ productId, facilityId: facility, quantity: qty }] } }));
@@ -40,28 +43,31 @@ export default function OrderToCash() {
 
   const convert = async () => {
     try {
+      setErr('');
       setOrder(await api<Order>(`/api/v1/quotes/${quote!.quoteId}/convert`, { method: 'POST' }));
     } catch (e) { setErr((e as Error).message); }
   };
 
   const approve = async () => {
     try {
+      setErr('');
       await api(`/api/v1/orders/${order!.orderId}/approve`, { method: 'POST' });
-      setOrder({ ...order!, status: 'ORDER_APPROVED' });
+      setOrder(await api<Order>(`/api/v1/orders/${order!.orderId}`));
     } catch (e) { setErr((e as Error).message); }
   };
 
   const invoiceAndCapture = async () => {
     try {
+      setErr('');
       const inv = runId() + 'inv';
       const pay = runId() + 'pay';
       const invoice = await api<Invoice>('/api/v1/invoices', { method: 'POST',
         body: { invoiceId: inv, customerId, billingAccountId: null, currencyUomId: 'USD',
           lines: [{ invoiceItemSeqId: '00001', invoiceItemTypeId: 'INV_FPROD_ITEM',
-            description: 'e2e order-to-cash', quantity: qty, amount: '9.99' }] } });
+            description: 'e2e order-to-cash', quantity: qty, amount: UNIT_PRICE }] } });
       await api<Payment>('/api/v1/payments', { method: 'POST',
         body: { paymentId: pay, invoiceId: inv, idempotencyKey: pay,
-          amount: order!.grandTotal, currencyUomId: 'USD' } });
+          amount: String(order!.grandTotal), currencyUomId: 'USD' } });
       await api<Payment>(`/api/v1/payments/${pay}/authorize`, { method: 'POST' });
       const captured = await api<Payment>(`/api/v1/payments/${pay}/capture`, { method: 'POST' });
       setBilling(`invoice ${invoice.invoiceId} — payment ${pay} status: ${captured.status}`);
@@ -70,6 +76,7 @@ export default function OrderToCash() {
 
   const showTrialBalance = async () => {
     try {
+      setErr('');
       const tb = await api<unknown>('/api/v1/gl/trial-balance');
       setGl('trial balance: ' + JSON.stringify(tb).slice(0, 200));
     } catch (e) { setErr((e as Error).message); }
@@ -90,7 +97,7 @@ export default function OrderToCash() {
         {order && `order ${order.orderId} status ${order.status} — total ${order.grandTotal} ${order.currencyUomId}`}
       </p>
       {order && <button onClick={() => void approve()}>Approve</button>}
-      {order && order.status === 'ORDER_APPROVED' && <button onClick={() => void invoiceAndCapture()}>Invoice + capture</button>}
+      {order && order.status === 'APPROVED' && <button onClick={() => void invoiceAndCapture()}>Invoice + capture</button>}
       <p data-testid="otc-billing">{billing}</p>
       <button onClick={() => void showTrialBalance()}>Show trial balance</button>
       <p data-testid="otc-gl">{gl}</p>

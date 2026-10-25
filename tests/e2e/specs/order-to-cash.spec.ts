@@ -19,16 +19,17 @@ test('order-to-cash: quote → order → approve → invoice → payment capture
   await expect(page.getByTestId('otc-order')).toContainText(/order \S+ status/);
   await expect(page.getByTestId('otc-order')).toContainText('19.98');
 
-  // 4. approve
+  // 4. approve (server truth: OrderStatus.APPROVED — no ORDER_ prefix)
   await page.getByRole('button', { name: 'Approve' }).click();
-  await expect(page.getByTestId('otc-order')).toContainText('ORDER_APPROVED');
+  await expect(page.getByTestId('otc-order')).toContainText('status APPROVED');
 
   // 5. invoice + capture payment
   await page.getByRole('button', { name: 'Invoice + capture' }).click();
   await expect(page.getByTestId('otc-billing')).toContainText(/invoice \S+/);
-  await expect(page.getByTestId('otc-billing')).toContainText(/payment \S+ status: \S+/);
+  await expect(page.getByTestId('otc-billing')).toContainText(/payment \S+ status: CAPTURED/);
 
   // 6. GL visibility (balanced-posting invariant is finance-svc's own test)
   await page.getByRole('button', { name: 'Show trial balance' }).click();
-  await expect(page.getByTestId('otc-gl')).toContainText(/trial balance/);
+  // actual shape: trial balance: {"rows":[{"glAccountId":"1100",...
+  await expect(page.getByTestId('otc-gl')).toContainText(/trial balance: \{"rows":\[\{"glAccountId":"\d/);
 });
