@@ -8,6 +8,8 @@
 
 **Tech Stack:** unchanged (Vite 5, React 18, TS 5, Playwright, pnpm).
 
+**AMENDMENT (Task 2 execution, 2026-10-25):** order-svc rejects returns unless the order is COMPLETED (ReturnService: "returns need COMPLETED", tested 409 on CREATED) and auto-completes the return before save — observable return status is `COMPLETED`, not `RECEIVED`. Task 2 screen therefore adds Approve → Complete steps (server re-fetch after each) gated before Create return; assertions expect COMPLETED. Also: ID minting gains a random suffix (`Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8)`) in helpers/ids.ts and screen runId() copies — ms-resolution IDs collided across parallel workers (duplicate-inventory 409 flake).
+
 **Verified API facts (from controllers + gateway yaml):**
 - Gateway: `/api/v1/returns/**`, `/api/v1/boms|routings|mrp/**`, `/api/v1/positions|employments|onboarding/**` routed. **`/api/v1/shipments/**` NOT routed** → Task 1 adds it (plan-1 Task 6a pattern).
 - Returns: `POST /api/v1/returns` `{orderId, lines:[{productId,facilityId,quantity}]}` → 201 `{returnId, orderId, status, lines}`; status enum `RECEIVED|COMPLETED`, no complete endpoint → observable status is `RECEIVED`. Credit memo = outbox event `order.creditmemo.issued.v1` (ReturnService.java:20) — event-level, covered by service tests; NOT asserted in E2E (honest-evidence rule from plan 1).
