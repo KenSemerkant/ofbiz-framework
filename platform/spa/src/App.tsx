@@ -9,6 +9,8 @@ import Returns from './screens/Returns';
 import PlanToShip from './screens/PlanToShip';
 import HireToRetire from './screens/HireToRetire';
 import Campaign from './screens/Campaign';
+import Content from './screens/Content';
+import CalendarScreen from './screens/CalendarScreen';
 
 export default function App() {
   const [params] = useSearchParams();
@@ -58,8 +60,8 @@ export default function App() {
         <Route path="/plan-to-ship" element={<PlanToShip />} />
         <Route path="/hire-to-retire" element={<HireToRetire />} />
         <Route path="/campaign" element={<Campaign />} />
-        <Route path="/content" element={<h1>Content</h1>} />
-        <Route path="/calendar" element={<h1>Calendar</h1>} />
+        <Route path="/content" element={<Content />} />
+        <Route path="/calendar" element={<CalendarScreen />} />
       </Routes>
     </>
   );

@@ -51,6 +51,8 @@ export default function Campaign() {
     try {
       let detail: AttributionDetail | null = null;
       for (let attempt = 0; ; attempt++) {
+        // bounds the 200-with-orderCount-0 path too (404s exit in the catch)
+        if (attempt >= 10) throw new Error('attribution read model did not catch up (orderCount 0)');
         try {
           detail = await api<AttributionDetail>(`/api/v1/attribution/${run + 'tc'}`);
           if (detail.orderCount >= 1) break;
