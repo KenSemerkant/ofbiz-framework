@@ -685,7 +685,7 @@ git add platform/spa/src && git commit -m "feat(spa): port parties/catalog/p6 sc
 FROM node:22-alpine AS build
 WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
-RUN corepack enable && pnpm install --frozen-lockfile
+RUN corepack enable && pnpm install --frozen-lockfile --ignore-scripts
 COPY . .
 RUN pnpm build
 
@@ -693,6 +693,8 @@ FROM nginx:1.27-alpine
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html
 ```
+
+NOTE: `--ignore-scripts` is required — pnpm ≥10 gates esbuild's postinstall (ERR_PNPM_IGNORED_BUILDS); the linux binary ships via the @esbuild/linux-x64 optional dep, so skipping the script is safe. If a future dep genuinely needs a postinstall, switch to `pnpm.onlyBuiltDependencies` in package.json. Also add `.dockerignore` (`node_modules`, `dist`) next to the Dockerfile.
 
 - [ ] **Step 2: nginx.conf (same contract as the configmap it replaces)**
 
@@ -750,7 +752,7 @@ NS="ofbiz"
 TAG="spa:local"
 
 docker build -t "${TAG}" "${SCRIPT_DIR}"
-kind load docker-image "${TAG}"
+kind load docker-image "${TAG}" --name ofbiz
 kubectl -n "${NS}" apply -f "${SCRIPT_DIR}/spa.yaml"
 kubectl -n "${NS}" set image deploy/spa nginx="${TAG}"
 kubectl -n "${NS}" rollout status deploy/spa --timeout=180s
