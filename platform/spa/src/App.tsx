@@ -1,6 +1,9 @@
 import { Routes, Route, NavLink, useSearchParams, useNavigate } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
 import { login, handleCallback } from './auth';
+import Parties from './screens/Parties';
+import Catalog from './screens/Catalog';
+import P6 from './screens/P6';
 
 export default function App() {
   const [params] = useSearchParams();
@@ -36,9 +39,9 @@ export default function App() {
       <Routes>
         <Route path="/" element={<h1>OFBiz journeys</h1>} />
         <Route path="/login/oauth2/code/gateway" element={<h1>OFBiz journeys</h1>} />
-        <Route path="/parties" element={<h1>parties (Task 4)</h1>} />
-        <Route path="/catalog" element={<h1>catalog (Task 4)</h1>} />
-        <Route path="/p6" element={<h1>long-tail (Task 4)</h1>} />
+        <Route path="/parties" element={<Parties />} />
+        <Route path="/catalog" element={<Catalog />} />
+        <Route path="/p6" element={<P6 />} />
         <Route path="/order-to-cash" element={<h1>order-to-cash (Task 6)</h1>} />
       </Routes>
     </>
