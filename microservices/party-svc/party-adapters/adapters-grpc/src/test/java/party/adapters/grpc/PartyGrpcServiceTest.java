@@ -55,6 +55,14 @@ class PartyGrpcServiceTest {
                         "P1", "PERSON", "Ada Lovelace"));
                     return new party.application.PartyPage(items, page, size, 1);
                 }
+
+                @Override
+                public party.application.PartyPage allPaged(int page, int size) {
+                    // P9-F4: same single row as findByRole
+                    var items = java.util.List.of(new party.application.PartyPage.PartySummary(
+                        "P1", "PERSON", "Ada Lovelace"));
+                    return new party.application.PartyPage(items, page, size, 1);
+                }
             },
             (eventType, aggregateKey, payload) -> outboxEvents.add(eventType),
             party -> "{}");

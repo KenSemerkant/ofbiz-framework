@@ -98,6 +98,16 @@ class ShipmentServiceTest {
             .filter(ShipmentService.STOCK_SHIPPED::equals).count());
     }
 
+    /** P9-F2: shipment listing for the SPA catalog area (null filter = match all). */
+    @Test
+    void searchFiltersByOrderId() {
+        service.create(new Shipment("SH-L1", "ORD-1"));
+        service.create(new Shipment("SH-L2", "ORD-2"));
+        assertEquals(2, service.search(null).size());
+        assertEquals(java.util.List.of("SH-L1"),
+            service.search("ORD-1").stream().map(Shipment::shipmentId).toList());
+    }
+
     @Test
     void invalidTransitionsAndUnknownShipments() {
         Shipment shipment = new Shipment("SH-4", null);
@@ -116,6 +126,11 @@ class ShipmentServiceTest {
         }
 
         @Override
+        public java.util.List<Shipment> all() {
+            return shipmentData.values().stream().toList();
+        }
+
+        @Override
         public void save(Shipment shipment) {
             shipmentData.put(shipment.shipmentId(), shipment);
         }
@@ -126,6 +141,11 @@ class ShipmentServiceTest {
         @Override
         public Optional<InventoryItem> find(String inventoryItemId) {
             return Optional.ofNullable(itemData.get(inventoryItemId));
+        }
+
+        @Override
+        public java.util.List<InventoryItem> all() {
+            return itemData.values().stream().toList();
         }
 
         @Override

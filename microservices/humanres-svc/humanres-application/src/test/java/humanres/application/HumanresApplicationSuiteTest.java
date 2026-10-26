@@ -41,6 +41,17 @@ class HumanresApplicationSuiteTest {
         stores.positions.save(new EmplPosition("POS-1", "ENGINEER", null, "ACTIVE"));
     }
 
+    /** P9-F6: listings for the SPA HR area. */
+    @Test
+    void listingsReturnCreatedRowsSortedById() {
+        positions.create("POS-L2", "MANAGER", null, "ACTIVE");
+        positions.create("POS-L1", "WORKER", null, "ACTIVE");
+        var ids = positions.all().stream().map(EmplPosition::emplPositionId).toList();
+        assertTrue(ids.containsAll(java.util.List.of("POS-L1", "POS-L2")));
+        assertEquals(ids, ids.stream().sorted().toList());
+        assertTrue(employments.all().isEmpty());
+    }
+
     @Test
     void positionCrudEmitsEventsAndRefusesDuplicates() {
         EmplPosition created = positions.create("POS-2", "MANAGER", "POS-1", "ACTIVE");
@@ -195,6 +206,12 @@ class HumanresApplicationSuiteTest {
         }
 
         @Override
+        public List<EmplPosition> all() {
+            return rows.stream()
+                .sorted(java.util.Comparator.comparing(EmplPosition::emplPositionId)).toList();
+        }
+
+        @Override
         public void save(EmplPosition position) {
             rows.removeIf(p -> p.emplPositionId().equals(position.emplPositionId()));
             rows.add(position);
@@ -208,6 +225,12 @@ class HumanresApplicationSuiteTest {
         public Optional<Employment> find(String employmentId) {
             return rows.stream().filter(e -> e.employmentId().equals(employmentId))
                 .findFirst();
+        }
+
+        @Override
+        public List<Employment> all() {
+            return rows.stream()
+                .sorted(java.util.Comparator.comparing(Employment::employmentId)).toList();
         }
 
         @Override

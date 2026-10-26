@@ -32,6 +32,15 @@ class FacilityServiceTest {
         assertEquals("Renamed", service.get("WH1").orElseThrow().facilityName());
     }
 
+    /** P9-F2: facility listing for the SPA catalog area. */
+    @Test
+    void allListsCreatedFacilitiesSortedById() {
+        service.upsert(new Facility("WH2", "Second", "WAREHOUSE"));
+        service.upsert(new Facility("WH1", "Main", "WAREHOUSE"));
+        assertEquals(List.of("WH1", "WH2"),
+            service.all().stream().map(Facility::facilityId).toList());
+    }
+
     @Test
     void deleteEmitsDeletedOnlyWhenPresent() {
         assertFalse(service.delete("nope"));
@@ -48,6 +57,11 @@ class FacilityServiceTest {
         @Override
         public Optional<Facility> find(String facilityId) {
             return Optional.ofNullable(storeData.get(facilityId));
+        }
+
+        @Override
+        public java.util.List<Facility> all() {
+            return storeData.values().stream().toList();
         }
 
         @Override

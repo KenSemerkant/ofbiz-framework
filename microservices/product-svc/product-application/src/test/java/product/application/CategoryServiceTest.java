@@ -31,6 +31,14 @@ class CategoryServiceTest {
             }
 
             @Override
+            public List<Category> all() {
+                // P9-F2: in-memory listing, ordered by id
+                return storeData.values().stream()
+                    .sorted((a, b) -> a.productCategoryId().compareTo(b.productCategoryId()))
+                    .toList();
+            }
+
+            @Override
             public List<Category> findChildren(String productCategoryId) {
                 return storeData.values().stream()
                     .filter(c -> productCategoryId.equals(c.primaryParentCategoryId()))
@@ -75,6 +83,16 @@ class CategoryServiceTest {
         },
         (eventType, aggregateKey, payload) -> outboxEvents.add(eventType),
         category -> "{\"productCategoryId\":\"" + category.productCategoryId() + "\"}");
+
+    /** P9-F2: category listing for the SPA catalog area. */
+    @Test
+    void allListsSavedCategories() {
+        assertTrue(service.all().isEmpty());
+        service.upsert(new Category("CAT-1", null, "Root"));
+        service.upsert(new Category("CAT-2", "CAT-1", "Child"));
+        assertEquals(java.util.List.of("CAT-1", "CAT-2"),
+            service.all().stream().map(Category::productCategoryId).toList());
+    }
 
     @Test
     void upsertEmitsCategoryUpdated() {

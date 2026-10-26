@@ -130,6 +130,11 @@ class ReservationServiceTest {
         }
 
         @Override
+        public java.util.List<InventoryItem> all() {
+            return itemData.values().stream().toList();
+        }
+
+        @Override
         public List<InventoryItem> findByProductIdAndFacilityId(String productId,
                 String facilityId) {
             return byProductFacility.getOrDefault(productId + "|" + facilityId, List.of());

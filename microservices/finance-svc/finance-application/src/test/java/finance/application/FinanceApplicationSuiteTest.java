@@ -50,6 +50,46 @@ class FinanceApplicationSuiteTest {
         gl.createPeriod("P-2026", LocalDate.parse("2026-01-01"), LocalDate.parse("2026-12-31"));
     }
 
+    /** P9-F1: listings + class-bucketed statements over the trial balance. */
+    @Test
+    void listingsAndStatementsBucketByAccountClass() {
+        var stores = new FakeStores();
+        FinanceSerializer ser = new FinanceSerializer() {
+            @Override
+            public String serializeTransaction(GlTransaction t) {
+                return "trans:" + t.acctgTransId();
+            }
+
+            @Override
+            public String serializePeriodClosed(Period p) {
+                return "period:" + p.periodId();
+            }
+        };
+        var gl = new GlService(stores.accounts, stores.transactions, stores.periods,
+            new OutboxWriter() {
+                public void append(String type, String key, String payload) { }
+            }, ser);
+        gl.createAccount("1100", "1100", "Cash", DebitCredit.DEBIT, "ASSET");
+        gl.createAccount("4000", "4000", "Sales Revenue", DebitCredit.CREDIT, "REVENUE");
+        gl.createPeriod("P-ST", java.time.LocalDate.of(2026, 1, 1),
+            java.time.LocalDate.of(2026, 12, 31));
+        gl.postTransaction("TT-S1", "MANUAL", "sale", "P-ST",
+            List.of(new GlEntry("1100", new BigDecimal("5.00"), DebitCredit.DEBIT),
+                new GlEntry("4000", new BigDecimal("5.00"), DebitCredit.CREDIT)));
+
+        assertEquals(2, gl.allAccounts().size());
+        assertEquals(1, gl.allTransactions().size());
+        var balanceSheet = gl.balanceSheet();
+        assertEquals(0, new BigDecimal("5.00")
+            .compareTo(balanceSheet.totalAssets()));
+        assertEquals(0, BigDecimal.ZERO.compareTo(
+            balanceSheet.totalLiabilitiesAndEquity()));
+        var incomeStatement = gl.incomeStatement();
+        assertEquals(0, new BigDecimal("5.00").compareTo(incomeStatement.netIncome()));
+        assertEquals(1, incomeStatement.income().size());
+        assertTrue(incomeStatement.expenses().isEmpty());
+    }
+
     @Test
     void balancedPostingLandsAndEmitsEvent() {
         GlTransaction posted = gl.postTransaction("TT-1", "MANUAL", "test", "P-2026", List.of(

@@ -29,7 +29,23 @@ class StoreServiceTest {
             public boolean delete(String productStoreId) {
                 return storeData.remove(productStoreId) != null;
             }
+
+            @Override
+            public java.util.List<Store> all() {
+                // P9-F2: in-memory listing, ordered by id
+                return storeData.values().stream()
+                    .sorted((a, b) -> a.productStoreId().compareTo(b.productStoreId()))
+                    .toList();
+            }
         });
+
+    /** P9-F2: store listing for the SPA catalog area. */
+    @Test
+    void allListsSavedStores() {
+        assertTrue(service.all().isEmpty());
+        service.upsert(new Store("S1", "Main", "USD", "WH1"));
+        assertEquals(1, service.all().size());
+    }
 
     @Test
     void upsertThenGetRoundtrip() {

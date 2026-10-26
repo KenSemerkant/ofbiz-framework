@@ -130,6 +130,11 @@ class OrderEcaServiceTest {
         }
 
         @Override
+        public java.util.List<Order> all() {
+            return java.util.List.copyOf(orders.values());
+        }
+
+        @Override
         public void save(Order order) {
             orders.put(order.orderId(), order);
         }

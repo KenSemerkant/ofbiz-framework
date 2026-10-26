@@ -163,6 +163,11 @@ class ManufacturingApplicationSuiteTest {
         }
 
         @Override
+        public java.util.List<Routing> all() {
+            return List.copyOf(rows);
+        }
+
+        @Override
         public void save(Routing routing) {
             rows.removeIf(r -> r.routingId().equals(routing.routingId()));
             rows.add(routing);

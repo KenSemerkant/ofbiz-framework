@@ -72,11 +72,34 @@ class ServiceSuiteTest {
         assertTrue(events.contains("order.order.cancelled.v1"));
     }
 
+    /** P9-F3: listings for the SPA order area (null filter = match all). */
+    @Test
+    void listingsReturnSavedAggregates() {
+        OrderEcaServiceTest.FakeOrderStore orders = new OrderEcaServiceTest.FakeOrderStore();
+        OrderLifecycleService lifecycle = new OrderLifecycleService(orders,
+            (type, key, payload) -> { }, DUMMY);
+        orders.save(createdOrder("ORDER-S1"));
+        orders.save(createdOrder("ORDER-S2"));
+        assertEquals(2, lifecycle.search(null, null).size());
+        assertEquals(1, lifecycle.search(null, "CREATED").stream()
+            .filter(o -> "ORDER-S1".equals(o.orderId())).count());
+        assertEquals(0, lifecycle.search("NOBODY", null).size());
+
+        Map<String, Quote> savedQuotes = new HashMap<>();
+        QuoteService quotes = new QuoteService(new QuoteStore() {
+            public Optional<Quote> find(String id) { return Optional.ofNullable(savedQuotes.get(id)); }
+            public java.util.List<Quote> all() { return List.copyOf(savedQuotes.values()); }
+            public void save(Quote q) { savedQuotes.put(q.quoteId(), q); }
+        }, null);
+        assertTrue(quotes.all().isEmpty());
+    }
+
     @Test
     void quoteCreateAndConvertPreserveSnapshot() {
         Map<String, Quote> saved = new HashMap<>();
         class Store implements QuoteStore {
             public Optional<Quote> find(String id) { return Optional.ofNullable(saved.get(id)); }
+            public java.util.List<Quote> all() { return List.copyOf(saved.values()); }
             public void save(Quote q) { saved.put(q.quoteId(), q); }
         }
         PlaceOrderSaga saga = new PlaceOrderSaga(new OrderEcaServiceTest.FakeOrderStore(),
@@ -118,6 +141,7 @@ class ServiceSuiteTest {
             public Optional<ReturnOrder> find(String id) {
                 return Optional.ofNullable(rows.get(id));
             }
+            public java.util.List<ReturnOrder> all() { return List.copyOf(rows.values()); }
             public void save(ReturnOrder r) { rows.put(r.returnId(), r); }
         }
         ReturnService returns = new ReturnService(new ReturnRows(), orders, sagas,

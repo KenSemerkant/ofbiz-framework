@@ -29,6 +29,19 @@ class InventoryServiceTest {
     private final InventoryService service = new InventoryService(new InMemoryItemStore(),
         (type, key, payload) -> outboxEvents.add(type), new StubSerializer());
 
+    /** P9-F2: stock search for the SPA catalog area (null filter = match all). */
+    @Test
+    void searchFiltersByProductAndFacility() {
+        service.create(new InventoryItem("II1", "WIDGET", "WH1", null, null));
+        service.create(new InventoryItem("II2", "WIDGET", "WH2", null, null));
+        service.create(new InventoryItem("II3", "GADGET", "WH1", null, null));
+        assertEquals(3, service.search(null, null).size());
+        assertEquals(java.util.List.of("II1", "II2"),
+            service.search("WIDGET", null).stream().map(InventoryItem::inventoryItemId).toList());
+        assertEquals(java.util.List.of("II2"),
+            service.search("WIDGET", "WH2").stream().map(InventoryItem::inventoryItemId).toList());
+    }
+
     @Test
     void createEmitsItemCreatedAndRejectsDuplicates() {
         service.create(new InventoryItem("II1", "WIDGET", "WH1", null, null));
@@ -100,6 +113,11 @@ class InventoryServiceTest {
         @Override
         public Optional<InventoryItem> find(String inventoryItemId) {
             return Optional.ofNullable(storeData.get(inventoryItemId));
+        }
+
+        @Override
+        public java.util.List<InventoryItem> all() {
+            return storeData.values().stream().toList();
         }
 
         @Override
