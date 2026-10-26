@@ -34,6 +34,17 @@ public class JpaPartyStore implements PartyStore {
     }
 
     @Override
+    public party.application.PartyPage allPaged(int page, int size) {
+        var result = parties.findAll(org.springframework.data.domain.PageRequest.of(page, size,
+            org.springframework.data.domain.Sort.by("partyId")));
+        var items = result.stream()
+            .map(e -> new party.application.PartyPage.PartySummary(e.getPartyId(), e.getKind(),
+                displayName(e)))
+            .toList();
+        return new party.application.PartyPage(items, page, size, result.getTotalElements());
+    }
+
+    @Override
     public party.application.PartyPage findByRole(String roleTypeId, int page, int size) {
         var result = parties.findByRole(roleTypeId,
             org.springframework.data.domain.PageRequest.of(page, size,

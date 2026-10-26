@@ -14,3 +14,14 @@ test('token removed mid-session surfaces error, not a crash', async ({ page }) =
   await page.getByRole('button', { name: 'Search' }).click();
   await expect(page.getByTestId('parties-msg')).toBeVisible();
 });
+
+// P9-F4 party parity: blank role lists all parties; a row opens the detail
+test('blank role lists all parties and row opens party detail', async ({ page }) => {
+  await page.goto('/parties');
+  await page.getByLabel('Role').fill('');
+  await page.getByRole('button', { name: 'Search' }).click();
+  await expect(page.getByTestId('parties-count')).toContainText(/parties/);
+  await page.getByRole('row').nth(1).click();
+  await expect(page.getByTestId('party-detail')).toBeVisible();
+  await expect(page.getByTestId('party-roles')).toContainText(/Roles:/);
+});

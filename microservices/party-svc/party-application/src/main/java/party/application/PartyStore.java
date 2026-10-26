@@ -12,4 +12,7 @@ public interface PartyStore {
 
     /** P2-F1-S3: paged role lookup, ordered by party id for stable pages. */
     PartyPage findByRole(String roleTypeId, int page, int size);
+
+    /** P9-F4: paged listing of all parties (role filter optional in the SPA). */
+    PartyPage allPaged(int page, int size);
 }

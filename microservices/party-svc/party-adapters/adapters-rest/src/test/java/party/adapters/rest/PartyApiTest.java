@@ -148,5 +148,14 @@ class PartyApiTest {
         assertTrue(page1.body().contains("\"totalElements\":10000"));
         assertTrue(page1.body().contains("\"totalPages\":500"));
         assertTrue(elapsedMs < 200, "p99 budget exceeded: query took " + elapsedMs + "ms");
+
+        // P9-F4 parity slice: no role = list all parties (earlier tests added
+        // a few more rows, so assert the 10k floor, not equality)
+        HttpResponse<String> allParties = client.send(HttpRequest.newBuilder()
+            .uri(URI.create("http://localhost:" + port + "/api/v1/parties?page=0&size=20"))
+            .GET().build(), HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, allParties.statusCode());
+        assertTrue(allParties.body().contains("\"totalElements\":10"),
+            "all-parties listing must include the 10k batch: " + allParties.body());
     }
 }

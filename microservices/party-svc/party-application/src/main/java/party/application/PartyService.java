@@ -33,6 +33,11 @@ public class PartyService {
     }
 
     /** P2-F1-S3: paged role lookup. */
+    /** P9-F4: paged listing of all parties. */
+    public PartyPage allPaged(int page, int size) {
+        return store.allPaged(page, size);
+    }
+
     public PartyPage findByRole(String roleTypeId, int page, int size) {
         return store.findByRole(roleTypeId, page, size);
     }

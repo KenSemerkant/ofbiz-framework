@@ -294,7 +294,9 @@ into identity.
 - **P9-F3 order → order-svc (L):** order entry, quotes, returns, order books (222-screen inventory).
   - Implemented (2026-10-26): `GET /orders?customerId&status`, `GET /quotes`, `GET /returns` (listings alongside P4 lifecycle surfaces); SPA Orders area (3 tabs); `tests/e2e/specs/orders.spec.ts`. AC: [x] REST surface covers triaged screens' data needs [x] SPA + parity specs green (40-run-e2e.sh 17/17, 2026-10-26T15:43:21Z) [x] jacoco 95% gate green.
   - Descopes: order-entry edit screens (SPA order creation flows via journeys: quote→convert, direct order POST), requirement/order-book admin slices — no migrated data path; lookup/decorator/print screens — sub-screens of implemented flows.
-- **P9-F4 party → party-svc (L):** party manager, relationships, classifications (146-screen inventory; party-svc at 4 endpoints — expand). AC: [ ] as per per-track DoD.
+- **P9-F4 party → party-svc (L):** party manager, relationships, classifications (146-screen inventory).
+  - Implemented (2026-10-26): `GET /parties` role parameter now optional (blank = all parties, still paged + <200ms budget asserted); SPA Parties screen: optional role + row-click party detail (roles + contact mechs); parties spec extended. AC: [x] REST surface covers triaged screens' data needs [x] SPA + parity specs green (40-run-e2e.sh 18/18, 2026-10-26T15:48:28Z) [x] jacoco 95% gate green.
+  - Descopes: party relationship maintenance + classification admin screens — no migrated data path (relationships exist in the domain but have no REST surface yet; add when a screen regains users); AgreementScreens (26, cross-ref F1) — agreement model not migrated.
 - **P9-F5 content → content-svc (M):** 142-screen inventory. AC: [ ] as per per-track DoD.
 - **P9-F6 humanres → humanres-svc (M):** 121-screen inventory. AC: [ ] as per per-track DoD.
 - **P9-F7 marketing → marketing-svc (M):** 108-screen inventory. AC: [ ] as per per-track DoD.
