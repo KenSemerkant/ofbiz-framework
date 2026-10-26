@@ -1,5 +1,6 @@
 package billing.application;
 
+import java.util.List;
 import java.util.Optional;
 import billing.domain.Invoice;
 
@@ -7,6 +8,9 @@ import billing.domain.Invoice;
 public interface InvoiceStore {
 
     Optional<Invoice> find(String invoiceId);
+
+    /** P9-F1: invoice listing for the SPA accounting area. */
+    List<Invoice> all();
 
     void save(Invoice invoice);
 }

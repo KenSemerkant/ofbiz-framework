@@ -103,6 +103,21 @@ public class FinanceController {
             .map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    /** P9-F1: chart of accounts for the SPA accounting area. */
+    @GetMapping("/accounts")
+    List<AccountResponse> accounts() {
+        return gl.allAccounts().stream()
+            .map(a -> new AccountResponse(a.glAccountId(), a.accountCode(), a.accountName(),
+                a.postBalance().name(), a.glAccountClassId()))
+            .toList();
+    }
+
+    /** P9-F1: journal listing for the SPA accounting area. */
+    @GetMapping("/transactions")
+    List<TransactionResponse> transactions() {
+        return gl.allTransactions().stream().map(this::toResponse).toList();
+    }
+
     @PostMapping("/periods")
     @Transactional
     ResponseEntity<PeriodResponse> createPeriod(@RequestBody CreatePeriodRequest request) {
@@ -171,6 +186,18 @@ public class FinanceController {
     @GetMapping("/trial-balance")
     GlService.TrialBalance trialBalance() {
         return gl.trialBalance();
+    }
+
+    /** P9-F1: balance sheet over posted transactions. */
+    @GetMapping("/balance-sheet")
+    GlService.BalanceSheet balanceSheet() {
+        return gl.balanceSheet();
+    }
+
+    /** P9-F1: income statement over posted transactions. */
+    @GetMapping("/income-statement")
+    GlService.IncomeStatement incomeStatement() {
+        return gl.incomeStatement();
     }
 
     private TransactionResponse toResponse(GlTransaction transaction) {

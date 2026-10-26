@@ -1,5 +1,7 @@
 package finance.adapters.rest.persistence;
 
+import java.util.Comparator;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Repository;
 import finance.application.GlAccountStore;
@@ -18,6 +20,13 @@ public class JpaGlAccountStore implements GlAccountStore {
     @Override
     public Optional<GlAccount> find(String glAccountId) {
         return accounts.findById(glAccountId).map(this::toDomain);
+    }
+
+    @Override
+    public List<GlAccount> all() {
+        // ponytail: in-memory sort — account counts are hundreds, not millions
+        return accounts.findAll().stream().map(this::toDomain)
+            .sorted(Comparator.comparing(GlAccount::accountCode)).toList();
     }
 
     @Override

@@ -119,6 +119,19 @@ class FinanceApiTest {
         assertTrue(tb.path("totalDebits").asDouble() > 0);
         assertEquals(tb.path("totalDebits").asDouble(), tb.path("totalCredits").asDouble(),
             0.0001);
+
+        // P9-F1 parity slice: chart-of-accounts + journal listings, statements
+        JsonNode accountList = get("/api/v1/gl/accounts");
+        assertTrue(accountList.isArray() && accountList.size() >= 2);
+        JsonNode journal = get("/api/v1/gl/transactions");
+        assertTrue(journal.isArray() && journal.size() >= 1);
+        assertTrue(journal.get(0).path("acctgTransId").asText().equals("TT-A1"));
+        JsonNode balanceSheet = get("/api/v1/gl/balance-sheet");
+        assertEquals(22.0, balanceSheet.path("totalAssets").asDouble(), 0.0001);
+        // revenue is not L+E — the accounting equation closes via net income
+        assertEquals(0.0, balanceSheet.path("totalLiabilitiesAndEquity").asDouble(), 0.0001);
+        JsonNode incomeStatement = get("/api/v1/gl/income-statement");
+        assertEquals(22.0, incomeStatement.path("netIncome").asDouble(), 0.0001);
         assertEquals(200, status("GET", "/api/v1/gl/periods/P-2026", ""));
         assertEquals(200, status("GET", "/api/v1/gl/accounts/1200", ""));
         assertEquals(200, status("GET", "/api/v1/gl/transactions/TT-A1", ""));

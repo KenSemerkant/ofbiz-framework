@@ -11,6 +11,7 @@ import HireToRetire from './screens/HireToRetire';
 import Campaign from './screens/Campaign';
 import Content from './screens/Content';
 import CalendarScreen from './screens/CalendarScreen';
+import Accounting from './screens/Accounting';
 
 export default function App() {
   const [params] = useSearchParams();
@@ -44,11 +45,13 @@ export default function App() {
         <NavLink to="/campaign">Campaign</NavLink>
         <NavLink to="/content">Content</NavLink>
         <NavLink to="/calendar">Calendar</NavLink>
+        <NavLink to="/accounting">Accounting</NavLink>
         {!signedIn
           ? <button data-testid="signin" onClick={() => void login()}>Sign in</button>
           : <span data-testid="signed-in">signed in</span>}
       </nav>
       {authError && <p className="err" data-testid="auth-error">{authError}</p>}
+      <main>
       <Routes>
         <Route path="/" element={<h1>OFBiz journeys</h1>} />
         <Route path="/login/oauth2/code/gateway" element={<h1>OFBiz journeys</h1>} />
@@ -62,7 +65,10 @@ export default function App() {
         <Route path="/campaign" element={<Campaign />} />
         <Route path="/content" element={<Content />} />
         <Route path="/calendar" element={<CalendarScreen />} />
+        <Route path="/accounting" element={<Accounting />} />
       </Routes>
+      </main>
+      <footer><span className="wordmark">OfBiz</span> — journeys</footer>
     </>
   );
 }

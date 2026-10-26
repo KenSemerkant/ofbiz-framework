@@ -65,6 +65,11 @@ public class PaymentService {
         return payments.find(paymentId);
     }
 
+    /** P9-F1: payment listing for the SPA accounting area. */
+    public List<Payment> all() {
+        return payments.all();
+    }
+
     public Payment authorize(String paymentId) {
         Payment payment = load(paymentId);
         GatewayResult result = call("authorize",

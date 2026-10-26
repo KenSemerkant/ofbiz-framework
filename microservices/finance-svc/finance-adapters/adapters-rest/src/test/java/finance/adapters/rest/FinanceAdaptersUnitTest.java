@@ -177,6 +177,13 @@ class FinanceAdaptersUnitTest {
         }
 
         @Override
+        public List<finance.domain.GlAccount> all() {
+            return rows.stream()
+                .sorted(java.util.Comparator.comparing(finance.domain.GlAccount::accountCode))
+                .toList();
+        }
+
+        @Override
         public void save(finance.domain.GlAccount account) {
             rows.removeIf(a -> a.glAccountId().equals(account.glAccountId()));
             rows.add(account);
@@ -190,6 +197,12 @@ class FinanceAdaptersUnitTest {
         public Optional<GlTransaction> find(String acctgTransId) {
             return rows.stream().filter(t -> t.acctgTransId().equals(acctgTransId))
                 .findFirst();
+        }
+
+        @Override
+        public List<GlTransaction> all() {
+            return rows.stream()
+                .sorted(java.util.Comparator.comparing(GlTransaction::acctgTransId)).toList();
         }
 
         @Override

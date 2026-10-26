@@ -61,6 +61,12 @@ class BillingApiTest {
         return post(path, "{}");
     }
 
+    private JsonNode get(String path) throws Exception {
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create("http://localhost:%d%s".formatted(port, path))).GET().build();
+        return json.readTree(http.send(request, HttpResponse.BodyHandlers.ofString()).body());
+    }
+
     private int status(String method, String path, String body) throws Exception {
         HttpRequest request = HttpRequest.newBuilder()
             .uri(URI.create("http://localhost:%d%s".formatted(port, path)))
@@ -113,6 +119,26 @@ class BillingApiTest {
         HttpResponse<byte[]> pdf = http.send(pdfRequest, HttpResponse.BodyHandlers.ofByteArray());
         assertEquals(200, pdf.statusCode());
         assertTrue(new String(pdf.body(), 0, 5).equals("%PDF-"));
+
+        // P9-F1 parity slice: AR find + payment listing for the SPA accounting area
+        JsonNode byCustomer = get("/api/v1/invoices?customerId=CUST-T1");
+        assertTrue(byCustomer.isArray() && byCustomer.size() >= 1);
+        assertTrue(hasId(byCustomer, "INV-T1"));
+        JsonNode byStatus = get("/api/v1/invoices?status=SETTLED");
+        assertTrue(hasId(byStatus, "INV-T1"));
+        JsonNode payments = get("/api/v1/payments?invoiceId=INV-T1");
+        assertTrue(payments.isArray() && payments.size() >= 1);
+        assertTrue(hasId(payments, "PAY-T1"));
+    }
+
+    private boolean hasId(JsonNode array, String id) {
+        for (JsonNode row : array) {
+            if (id.equals(row.path("invoiceId").asText())
+                || id.equals(row.path("paymentId").asText())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private String getInvoiceStatus() throws Exception {

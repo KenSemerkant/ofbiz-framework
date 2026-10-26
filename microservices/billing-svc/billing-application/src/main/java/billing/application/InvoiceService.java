@@ -38,6 +38,11 @@ public class InvoiceService {
         return invoices.find(invoiceId);
     }
 
+    /** P9-F1: invoice listing for the SPA accounting area. */
+    public List<Invoice> all() {
+        return invoices.all();
+    }
+
     /** Manual invoice creation (P5-F1-S1): starts in DRAFT. */
     public Invoice createDraft(String invoiceId, String customerId, String currencyUomId,
             String billingAccountId, List<InvoiceLine> lines) {

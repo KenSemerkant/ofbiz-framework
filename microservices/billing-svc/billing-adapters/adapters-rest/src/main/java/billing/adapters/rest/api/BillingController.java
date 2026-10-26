@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import billing.application.InvoiceService;
 import billing.application.PaymentService;
@@ -98,6 +99,26 @@ public class BillingController {
     ResponseEntity<InvoiceResponse> getInvoice(@PathVariable String invoiceId) {
         return invoices.get(invoiceId).map(this::toResponse).map(ResponseEntity::ok)
             .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    /** P9-F1: invoice search for the SPA accounting area (AR/AP find screen). */
+    @GetMapping("/invoices")
+    List<InvoiceResponse> listInvoices(@RequestParam(required = false) String customerId,
+            @RequestParam(required = false) String status) {
+        return invoices.all().stream()
+            .filter(i -> customerId == null || customerId.equals(i.customerId()))
+            .filter(i -> status == null || status.equals(i.status().name()))
+            .map(this::toResponse).toList();
+    }
+
+    /** P9-F1: payment listing for the SPA accounting area. */
+    @GetMapping("/payments")
+    List<PaymentResponse> listPayments(@RequestParam(required = false) String invoiceId,
+            @RequestParam(required = false) String status) {
+        return payments.all().stream()
+            .filter(p -> invoiceId == null || invoiceId.equals(p.invoiceId()))
+            .filter(p -> status == null || status.equals(p.status().name()))
+            .map(this::toResponse).toList();
     }
 
     @PostMapping("/invoices/{invoiceId}/issue")

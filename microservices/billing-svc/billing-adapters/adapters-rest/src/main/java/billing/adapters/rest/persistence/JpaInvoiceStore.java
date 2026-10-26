@@ -23,6 +23,13 @@ public class JpaInvoiceStore implements InvoiceStore {
     }
 
     @Override
+    public java.util.List<Invoice> all() {
+        // ponytail: in-memory sort — invoice volumes are thousands, not millions
+        return invoices.findAll().stream().map(this::toDomain)
+            .sorted(java.util.Comparator.comparing(Invoice::invoiceId)).toList();
+    }
+
+    @Override
     public void save(Invoice invoice) {
         invoices.save(new InvoiceEntity(invoice.invoiceId(), invoice.orderId(),
             invoice.customerId(), invoice.billingAccountId(), invoice.status().name(),

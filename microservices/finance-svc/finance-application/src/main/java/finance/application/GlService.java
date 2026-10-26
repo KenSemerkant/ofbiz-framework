@@ -37,6 +37,20 @@ public class GlService {
         }
     }
 
+    /** P9-F1 statement slice: class-bucketed account totals for the SPA. */
+    public record StatementRow(String glAccountId, String accountCode, String accountName,
+            BigDecimal amount) {
+    }
+
+    public record BalanceSheet(List<StatementRow> assets, List<StatementRow> liabilities,
+            List<StatementRow> equity, BigDecimal totalAssets,
+            BigDecimal totalLiabilitiesAndEquity) {
+    }
+
+    public record IncomeStatement(List<StatementRow> income, List<StatementRow> expenses,
+            BigDecimal netIncome) {
+    }
+
     private final GlAccountStore accounts;
     private final GlTransactionStore transactions;
     private final PeriodStore periods;
@@ -70,6 +84,78 @@ public class GlService {
 
     public Optional<GlAccount> getAccount(String glAccountId) {
         return accounts.find(glAccountId);
+    }
+
+    /** P9-F1: chart of accounts for the SPA accounting area. */
+    public List<GlAccount> allAccounts() {
+        return accounts.all();
+    }
+
+    /** P9-F1: journal listing (posted + unposted) for the SPA accounting area. */
+    public List<GlTransaction> allTransactions() {
+        return transactions.all();
+    }
+
+    /**
+     * P9-F1: balance sheet — assets vs liabilities + equity, bucketed by
+     * glAccountClassId over the trial-balance rows. Balances when the ledger
+     * does (double-entry implies assets = liabilities + equity + net income).
+     */
+    public BalanceSheet balanceSheet() {
+        List<StatementRow> assets = new java.util.ArrayList<>();
+        List<StatementRow> liabilities = new java.util.ArrayList<>();
+        List<StatementRow> equity = new java.util.ArrayList<>();
+        for (TrialBalanceRow row : trialBalance().rows()) {
+            String cls = classOf(row.glAccountId());
+            StatementRow statement = new StatementRow(row.glAccountId(), row.accountCode(),
+                row.accountName(), signedBalance(row, cls));
+            switch (cls) {
+                case "ASSET" -> assets.add(statement);
+                case "LIABILITY" -> liabilities.add(statement);
+                case "EQUITY" -> equity.add(statement);
+                default -> { }
+            }
+        }
+        BigDecimal totalAssets = sum(assets);
+        BigDecimal totalLiabilitiesAndEquity = sum(liabilities).add(sum(equity));
+        return new BalanceSheet(assets, liabilities, equity, totalAssets,
+            totalLiabilitiesAndEquity);
+    }
+
+    /** P9-F1: income statement — revenue minus expenses, net income included. */
+    public IncomeStatement incomeStatement() {
+        List<StatementRow> income = new java.util.ArrayList<>();
+        List<StatementRow> expenses = new java.util.ArrayList<>();
+        for (TrialBalanceRow row : trialBalance().rows()) {
+            String cls = classOf(row.glAccountId());
+            StatementRow statement = new StatementRow(row.glAccountId(), row.accountCode(),
+                row.accountName(), signedBalance(row, cls));
+            switch (cls) {
+                case "REVENUE" -> income.add(statement);
+                case "EXPENSE" -> expenses.add(statement);
+                default -> { }
+            }
+        }
+        return new IncomeStatement(income, expenses, sum(income).subtract(sum(expenses)));
+    }
+
+    private String classOf(String glAccountId) {
+        String cls = accounts.find(glAccountId).map(GlAccount::glAccountClassId)
+            .orElse("").toUpperCase();
+        return "INCOME".equals(cls) ? "REVENUE" : cls;
+    }
+
+    /** Debit-natural classes report debit-credit; credit-natural the reverse. */
+    private BigDecimal signedBalance(TrialBalanceRow row, String cls) {
+        return switch (cls) {
+            case "ASSET", "EXPENSE" -> row.debitTotal().subtract(row.creditTotal());
+            default -> row.creditTotal().subtract(row.debitTotal());
+        };
+    }
+
+    private BigDecimal sum(List<StatementRow> rows) {
+        return rows.stream().map(StatementRow::amount).reduce(BigDecimal.ZERO,
+            BigDecimal::add);
     }
 
     public Period createPeriod(String periodId, java.time.LocalDate from,

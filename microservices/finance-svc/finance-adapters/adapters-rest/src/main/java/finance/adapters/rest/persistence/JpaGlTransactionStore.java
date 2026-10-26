@@ -22,6 +22,13 @@ public class JpaGlTransactionStore implements GlTransactionStore {
     }
 
     @Override
+    public List<GlTransaction> all() {
+        // ponytail: in-memory sort — journal volumes are thousands, not millions
+        return transactions.findAll().stream().map(this::toDomain)
+            .sorted(java.util.Comparator.comparing(GlTransaction::acctgTransId)).toList();
+    }
+
+    @Override
     public void save(GlTransaction transaction) {
         transactions.save(new GlTransactionEntity(transaction.acctgTransId(),
             transaction.transType(), transaction.description(), transaction.periodId(),

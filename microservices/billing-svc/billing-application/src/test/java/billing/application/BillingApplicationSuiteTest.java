@@ -207,6 +207,12 @@ class BillingApplicationSuiteTest {
         }
 
         @Override
+        public List<Invoice> all() {
+            return rows.stream()
+                .sorted(java.util.Comparator.comparing(Invoice::invoiceId)).toList();
+        }
+
+        @Override
         public void save(Invoice invoice) {
             rows.removeIf(i -> i.invoiceId().equals(invoice.invoiceId()));
             rows.add(invoice);
