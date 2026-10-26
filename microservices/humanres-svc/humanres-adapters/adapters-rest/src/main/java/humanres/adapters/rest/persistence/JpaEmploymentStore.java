@@ -16,6 +16,11 @@ public class JpaEmploymentStore implements EmploymentStore {
     }
 
     @Override
+    public java.util.List<Employment> all() {
+        return employments.findAll().stream().map(this::toDomain).toList();
+    }
+
+    @Override
     public Optional<Employment> find(String employmentId) {
         return employments.findById(employmentId).map(this::toDomain);
     }

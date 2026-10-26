@@ -44,6 +44,12 @@ public class RoutingService {
         return routing;
     }
 
+    /** P9-F8: routing listing for the SPA manufacturing area. */
+    public java.util.List<Routing> all() {
+        return routings.all().stream()
+            .sorted(java.util.Comparator.comparing(Routing::routingId)).toList();
+    }
+
     public Optional<Routing> get(String routingId) {
         return routings.find(routingId);
     }

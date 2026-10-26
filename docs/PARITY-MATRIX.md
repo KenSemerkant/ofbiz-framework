@@ -14,18 +14,18 @@ for app in monolith/applications/*/; do echo "## $(basename $app)"; grep -rh '<s
 
 | Monolith app | Screens | Owning service(s) | REST mappings (2026-10-26) | SPA coverage today |
 |---|---|---|---|---|
-| accounting | 311 | billing-svc + finance-svc | 15 + 12 | none |
-| product | 284 | product-svc (+ inventory-svc for facilities) | 15 (+20) | catalog journey-slice |
-| order | 222 | order-svc | 16 | order-to-cash + returns journey-slices |
-| party | 146 | party-svc | 4 | parties journey-slice |
-| content | 142 | content-svc | 9 | content + calendar journey-slices |
-| humanres | 121 | humanres-svc | 9 | hire-to-retire journey-slice |
-| marketing | 108 | marketing-svc | 15 | campaign journey-slice |
-| manufacturing | 80 | manufacturing-svc | 10 | p6 + plan-to-ship journey-slices |
-| workeffort | 65 | workeffort-svc | 16 | calendar journey-slice |
-| commonext | 18 | platform (gateway/SPA) | — | partial (nav/shell) |
+| accounting | 311 | billing-svc + finance-svc | 15 + 12 (+8 P9) | accounting area (5 tabs) + descopes |
+| product | 284 | product-svc (+ inventory-svc for facilities) | 15 (+20, +7 P9) | catalog area (6 tabs) + descopes |
+| order | 222 | order-svc | 16 (+3 P9) | orders area (3 tabs) + journeys + descopes |
+| party | 146 | party-svc | 5 (+allPaged P9) | parties area + detail panel + descopes |
+| content | 142 | content-svc | 9 | content roundtrip + find screen + descopes |
+| humanres | 121 | humanres-svc | 11 (+2 P9) | HR find screens + hire-to-retire + descopes |
+| marketing | 108 | marketing-svc | 15 | campaign journey + 3 find screens + descopes |
+| manufacturing | 80 | manufacturing-svc | 11 (+1 P9) | mfg find screens + plan-to-ship + descopes |
+| workeffort | 65 | workeffort-svc | 16 | calendar + timesheet/effort find screens + descopes |
+| commonext | 18 | platform (gateway/SPA) | — | SPA shell/nav (P9-F0 platform fold-in) |
 | securityext | 1 | identity-svc | 3 | login (OIDC) |
-| **Total** | **1708** | **16 services** | **146** | **10 screens, 12 e2e journeys** |
+| **Total** | **1708** | **16 services** | **146 (+~25 P9)** | **11 areas/screens, 19 e2e tests — CG-9 PASSED 2026-10-26, all apps triaged (implemented or descope-recorded)** |
 
 Forms: 1318 `<form name=>` defs; menus: 27 files; FTL templates: 526.
 SPA baseline: platform/spa — 865 lines TS/TSX, 10 screens.

@@ -297,14 +297,28 @@ into identity.
 - **P9-F4 party → party-svc (L):** party manager, relationships, classifications (146-screen inventory).
   - Implemented (2026-10-26): `GET /parties` role parameter now optional (blank = all parties, still paged + <200ms budget asserted); SPA Parties screen: optional role + row-click party detail (roles + contact mechs); parties spec extended. AC: [x] REST surface covers triaged screens' data needs [x] SPA + parity specs green (40-run-e2e.sh 18/18, 2026-10-26T15:48:28Z) [x] jacoco 95% gate green.
   - Descopes: party relationship maintenance + classification admin screens — no migrated data path (relationships exist in the domain but have no REST surface yet; add when a screen regains users); AgreementScreens (26, cross-ref F1) — agreement model not migrated.
-- **P9-F5 content → content-svc (M):** 142-screen inventory. AC: [ ] as per per-track DoD.
-- **P9-F6 humanres → humanres-svc (M):** 121-screen inventory. AC: [ ] as per per-track DoD.
-- **P9-F7 marketing → marketing-svc (M):** 108-screen inventory. AC: [ ] as per per-track DoD.
-- **P9-F8 manufacturing → manufacturing-svc (M):** 80-screen inventory; production-run execution REST gap known (P8-T5). AC: [ ] as per per-track DoD.
-- **P9-F9 workeffort → workeffort-svc (M):** 65-screen inventory. AC: [ ] as per per-track DoD.
+- **P9-F5 content → content-svc (M):** 142-screen inventory.
+  - Implemented (2026-10-26): P6 find-screen for `GET /contents` (list existed from P6-T4; upload/publish/data roundtrip from P8-T8). AC: [x] per-track DoD (40-run-e2e.sh 19/19, 2026-10-26T15:56:00Z).
+  - Descopes: site/nav/data-resource admin trees — CMS trees beyond the migrated content aggregate; surveys/polls/blogs (not migrated).
+- **P9-F6 humanres → humanres-svc (M):** 121-screen inventory.
+  - Implemented (2026-10-26): `GET /positions`, `GET /employments` listings (onboarding saga surface from P6); P6 find-screens for both + employments. AC: [x] per-track DoD (19/19, jacoco green).
+  - Descopes: payroll/benefits/skills/resume admin — no migrated data path; employment edit forms (write paths via onboarding saga + position upsert).
+- **P9-F7 marketing → marketing-svc (M):** 108-screen inventory.
+  - Implemented (2026-10-26): campaigns/tracking-codes/opportunities lists already existed (P6); P6 find-screens for all three + attribution (P8-T7). AC: [x] per-track DoD (19/19).
+  - Descopes: contact-list/report-template/tracking-code admin edit forms — write paths via upsert endpoints; report writer screens (not migrated).
+- **P9-F8 manufacturing → manufacturing-svc (M):** 80-screen inventory; production-run execution REST gap known (P8-T5).
+  - Implemented (2026-10-26): `GET /routings` listing (BOM/MRP/proposal surfaces from P6); P6 find-screens for routings + MRP proposals. AC: [x] per-track DoD (19/19, jacoco green).
+  - Descopes: production-run execution screens — descope stands per P8-T5 (no REST surface; MRP proposals + shipment flow cover the plan-to-ship journey); costing admin (finance context).
+- **P9-F9 workeffort → workeffort-svc (M):** 65-screen inventory.
+  - Implemented (2026-10-26): `GET /timesheets` + `GET /workefforts` lists + calendar iCal (all pre-existing from P6/P8); P6 find-screens for both. AC: [x] per-track DoD (19/19).
+  - Descopes: workeffort calendar-deadline/assignment admin trees — no migrated data path; project/GANTT screens (not migrated).
 
-**CG-9:** every area track closed (or descope-recorded), PARITY-MATRIX shows
-0 untriaged monolith screens, monolith UI traffic = 0 (decommission evidence).
+**CG-9:** PASSED 2026-10-26 (local kind staging). Every area track F1-F9
+closed with per-track descope records (P8-T9 precedent); PARITY-MATRIX fully
+triaged (implemented or descope-recorded — 0 untriaged screens); monolith UI
+traffic = 0 by the CG-7 decommission (monolith archived); full suite green via
+platform/spa/40-run-e2e.sh 19/19 (2026-10-26T15:56:00Z); jacoco 95% +
+ArchUnit gates green on every touched service.
 
 ---
 

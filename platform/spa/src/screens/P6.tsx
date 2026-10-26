@@ -1,6 +1,21 @@
 import { useState } from 'react';
 import { api } from '../api';
 
+// P9-F5..F9 long-tail listing surfaces: one Load button per domain, matching
+// each monolith app's find screen.
+const LISTS = [
+  { title: 'Positions (humanres)', endpoint: '/api/v1/positions', testid: 'positions' },
+  { title: 'Employments (humanres)', endpoint: '/api/v1/employments', testid: 'employments' },
+  { title: 'Contents (content)', endpoint: '/api/v1/contents', testid: 'contents' },
+  { title: 'Campaigns (marketing)', endpoint: '/api/v1/campaigns', testid: 'campaigns' },
+  { title: 'Tracking codes (marketing)', endpoint: '/api/v1/tracking-codes', testid: 'tracking-codes' },
+  { title: 'Opportunities (marketing)', endpoint: '/api/v1/opportunities', testid: 'opportunities' },
+  { title: 'Routings (manufacturing)', endpoint: '/api/v1/routings', testid: 'routings' },
+  { title: 'MRP proposals (manufacturing)', endpoint: '/api/v1/mrp/proposals', testid: 'mrp-proposals' },
+  { title: 'Work efforts (workeffort)', endpoint: '/api/v1/workefforts', testid: 'workefforts' },
+  { title: 'Timesheets (workeffort)', endpoint: '/api/v1/timesheets', testid: 'timesheets' },
+];
+
 const DOMAINS = [
   { title: 'BOM (manufacturing)', endpoint: '/api/v1/boms', id: 'productId',
     fields: [['product', 'productId'], ['component', 'componentId'], ['qty', 'quantity']] },
@@ -25,9 +40,33 @@ const PAYLOAD: Record<string, (v: Record<string, string>) => unknown> = {
 
 export default function P6() {
   const [results, setResults] = useState<Record<string, string>>({});
+  const [listRows, setListRows] = useState<Record<string, unknown[]>>({});
+  const load = async (key: string, endpoint: string) => {
+    try {
+      setListRows(r => ({ ...r, [key]: [] }));
+      const rows = await api<unknown[]>(endpoint);
+      setListRows(r => ({ ...r, [key]: rows }));
+    } catch (e) {
+      setResults(s => ({ ...s, [key]: (e as Error).message }));
+    }
+  };
   return (
     <section aria-labelledby="p6-h">
       <h2 id="p6-h">Long-tail domains (P6)</h2>
+      <div>
+        <h3>Find screens (P9 parity)</h3>
+        {LISTS.map(l => (
+          <div key={l.testid}>
+            <button data-testid={`load-${l.testid}`} onClick={() => void load(l.testid, l.endpoint)}>
+              {l.title}
+            </button>{' '}
+            <span data-testid={`count-${l.testid}`}>
+              {listRows[l.testid] ? `${(listRows[l.testid] as unknown[]).length} rows` : ''}
+            </span>
+            <p className="err">{results[l.testid] ?? ''}</p>
+          </div>
+        ))}
+      </div>
       {DOMAINS.map(d => (
         <div key={d.id}>
           <h3>{d.title}</h3>

@@ -115,6 +115,12 @@ public class ManufacturingController {
             routings.create(request.routingId(), request.productId(), tasks(request))));
     }
 
+    /** P9-F8: routing listing for the SPA manufacturing area. */
+    @GetMapping("/api/v1/routings")
+    java.util.List<RoutingResponse> listRoutings() {
+        return routings.all().stream().map(this::toRoutingBody).toList();
+    }
+
     @GetMapping("/api/v1/routings/{routingId}")
     ResponseEntity<RoutingResponse> getRouting(@PathVariable String routingId) {
         return routings.get(routingId).map(this::toRoutingBody)

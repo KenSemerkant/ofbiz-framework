@@ -25,6 +25,12 @@ public class PositionService {
         this.serializer = serializer;
     }
 
+    /** P9-F6: position listing for the SPA HR area. */
+    public java.util.List<EmplPosition> all() {
+        return positions.all().stream()
+            .sorted(java.util.Comparator.comparing(EmplPosition::emplPositionId)).toList();
+    }
+
     public Optional<EmplPosition> find(String emplPositionId) {
         return positions.find(emplPositionId);
     }

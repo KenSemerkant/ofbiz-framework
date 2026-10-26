@@ -370,6 +370,12 @@ class HumanresAdaptersUnitTest {
         }
 
         @Override
+        public List<EmplPosition> all() {
+            return rows.stream()
+                .sorted(java.util.Comparator.comparing(EmplPosition::emplPositionId)).toList();
+        }
+
+        @Override
         public void save(EmplPosition position) {
             rows.removeIf(p -> p.emplPositionId().equals(position.emplPositionId()));
             rows.add(position);
@@ -384,6 +390,12 @@ class HumanresAdaptersUnitTest {
         public Optional<Employment> find(String employmentId) {
             return rows.stream().filter(e -> e.employmentId().equals(employmentId))
                 .findFirst();
+        }
+
+        @Override
+        public List<Employment> all() {
+            return rows.stream()
+                .sorted(java.util.Comparator.comparing(Employment::employmentId)).toList();
         }
 
         @Override

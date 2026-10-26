@@ -16,6 +16,11 @@ public class JpaRoutingStore implements RoutingStore {
     }
 
     @Override
+    public java.util.List<Routing> all() {
+        return routings.findAll().stream().map(this::toDomain).toList();
+    }
+
+    @Override
     public Optional<Routing> find(String routingId) {
         return routings.findById(routingId).map(this::toDomain);
     }

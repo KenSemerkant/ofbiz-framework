@@ -16,6 +16,11 @@ public class JpaEmplPositionStore implements EmplPositionStore {
     }
 
     @Override
+    public java.util.List<EmplPosition> all() {
+        return positions.findAll().stream().map(this::toDomain).toList();
+    }
+
+    @Override
     public Optional<EmplPosition> find(String emplPositionId) {
         return positions.findById(emplPositionId).map(this::toDomain);
     }

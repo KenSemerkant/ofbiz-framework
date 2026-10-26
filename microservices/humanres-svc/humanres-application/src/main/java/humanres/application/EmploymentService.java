@@ -27,6 +27,12 @@ public class EmploymentService {
         this.serializer = serializer;
     }
 
+    /** P9-F6: employment listing for the SPA HR area. */
+    public java.util.List<Employment> all() {
+        return employments.all().stream()
+            .sorted(java.util.Comparator.comparing(Employment::employmentId)).toList();
+    }
+
     public Optional<Employment> find(String employmentId) {
         return employments.find(employmentId);
     }

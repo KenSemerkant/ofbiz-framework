@@ -82,6 +82,12 @@ public class HumanresController {
         return ResponseEntity.status(HttpStatus.CREATED).body(toPositionResponse(position));
     }
 
+    /** P9-F6: position listing for the SPA HR area. */
+    @GetMapping("/api/v1/positions")
+    java.util.List<PositionResponse> listPositions() {
+        return positions.all().stream().map(this::toPositionResponse).toList();
+    }
+
     @GetMapping("/api/v1/positions/{emplPositionId}")
     ResponseEntity<PositionResponse> getPosition(@PathVariable String emplPositionId) {
         return positions.find(emplPositionId).map(this::toPositionResponse)
@@ -106,6 +112,12 @@ public class HumanresController {
             request.thruDate() == null ? null : LocalDate.parse(request.thruDate()));
         return ResponseEntity.status(HttpStatus.CREATED)
             .body(toEmploymentResponse(employment));
+    }
+
+    /** P9-F6: employment listing for the SPA HR area. */
+    @GetMapping("/api/v1/employments")
+    java.util.List<EmploymentResponse> listEmployments() {
+        return employments.all().stream().map(this::toEmploymentResponse).toList();
     }
 
     @GetMapping("/api/v1/employments/{employmentId}")
