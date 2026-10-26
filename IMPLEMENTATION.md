@@ -256,6 +256,50 @@ against the live kind cluster; each story's green run is gate evidence.
 
 ---
 
+## PHASE 9 — Frontend Parity (monolith screen coverage in SPA)
+
+Goal: SPA reaches functional parity with the monolith's user-facing screens,
+area by area. Each area track: triage that app's screen inventory
+(docs/PARITY-MATRIX.md) → fill REST gaps in the owning service → SPA screens +
+forms → Playwright parity specs → area gate. Monolith UI retired per area only
+after its parity gate + the cutover rules (Working Agreement 2).
+
+Baseline (2026-10-26): monolith 1,708 screen defs / 1,318 forms across 11
+apps; SPA 10 screens (865 lines); services expose 146 REST mappings.
+Full enumeration + owning-service mapping: docs/PARITY-MATRIX.md
+(regeneration command in its header).
+
+Per-track definition of done (elaborated into sub-stories on entry, P6-style):
+1. Screen inventory triaged MoSCoW against the owning service's bounded
+   context; descopes recorded here with evidence (P8-T9 precedent).
+2. REST gaps filled in the owning service (outbox events for cross-context
+   state; no new services without an ADR).
+3. SPA area: screens/forms matching monolith capability, a11y locators,
+   parity spec per screen family in tests/e2e.
+4. Area gate: parity specs green via platform/spa/40-run-e2e.sh, consistency
+   delta 0 where data is migrated, dashboards + this file updated same-PR.
+
+Track order: business value of retiring monolith UI first — accounting leads
+(zero SPA coverage, deepest monolith surface, billing+finance already carry
+27 endpoints). commonext (18) folds into the platform shell; securityext (1)
+into identity.
+
+- **P9-F0 (S):** Parity matrix committed. AC: [x] docs/PARITY-MATRIX.md generated from monolith widget XML [x] app→owning-service mapping recorded [x] track priority order recorded (this section). Evidence: same commit as this section.
+- **P9-F1 accounting → billing-svc + finance-svc (XL):** GL, invoices, payments, AR/AP, statements, budget screens (311-screen inventory). AC: [ ] REST surface covers triaged screens' data needs [ ] SPA accounting area + parity specs green [ ] trial-balance/BalanceSheet consistency delta 0 vs monolith on migrated dataset.
+- **P9-F2 product + facilities → product-svc + inventory-svc (XL):** catalog, categories, prices, stores, facilities, stock (284-screen inventory + facility slice). AC: [ ] as per per-track DoD.
+- **P9-F3 order → order-svc (L):** order entry, quotes, returns, order books (222-screen inventory). AC: [ ] as per per-track DoD.
+- **P9-F4 party → party-svc (L):** party manager, relationships, classifications (146-screen inventory; party-svc at 4 endpoints — expand). AC: [ ] as per per-track DoD.
+- **P9-F5 content → content-svc (M):** 142-screen inventory. AC: [ ] as per per-track DoD.
+- **P9-F6 humanres → humanres-svc (M):** 121-screen inventory. AC: [ ] as per per-track DoD.
+- **P9-F7 marketing → marketing-svc (M):** 108-screen inventory. AC: [ ] as per per-track DoD.
+- **P9-F8 manufacturing → manufacturing-svc (M):** 80-screen inventory; production-run execution REST gap known (P8-T5). AC: [ ] as per per-track DoD.
+- **P9-F9 workeffort → workeffort-svc (M):** 65-screen inventory. AC: [ ] as per per-track DoD.
+
+**CG-9:** every area track closed (or descope-recorded), PARITY-MATRIX shows
+0 untriaged monolith screens, monolith UI traffic = 0 (decommission evidence).
+
+---
+
 ## Cross-Phase Working Agreements
 
 1. **Definition of Done (every story):** AC met with evidence link, CI green, contracts backward-compatible, dashboards updated, docs updated (this file + service README).
