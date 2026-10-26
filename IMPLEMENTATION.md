@@ -322,6 +322,30 @@ ArchUnit gates green on every touched service.
 
 ---
 
+## PHASE 10 — Party-manager edit parity (demo-site depth)
+
+Goal: close the gap between the SPA Parties area and the monolith partymgr
+demo (https://demo-stable.ofbiz.apache.org/partymgr/control/main). Tiered by
+backend readiness; each tier ships SPA + spec + e2e green.
+
+- **P10-F0 (M):** Tier 1 — party create/edit using the existing party-svc
+  upsert contract (full-state POST; server computes role granted/revoked
+  deltas; contact mechs replaced wholesale with client-side merge from GET).
+  SPA: new/edit person+group forms, role grant/revoke, contact-mech
+  add/edit. AC: [x] edit roundtrip spec green (create → grant roles → add
+  EMAIL_ADDRESS mech → edit → revoke SUPPLIER, mech preserved) [x]
+  40-run-e2e.sh green (20/20, 2026-10-26T18:19:21Z) — implemented same day,
+  full-state upsert against the existing party-svc contract (server computes
+  role deltas).
+- **P10-F1 (L):** Tier 2 — domain modeling: PartyRelationship aggregate +
+  classifications + attributes + notes in party-svc (clean arch, ArchUnit,
+  jacoco 95%), then SPA detail tabs per feature.
+- **P10-F2 (S):** Tier 3 — DESCOPE (recorded): user logins + security groups
+  (identity-svc territory — cross-context, needs an ADR before any surface),
+  visit tracking, address-match maps (archived data, no path).
+
+---
+
 ## Cross-Phase Working Agreements
 
 1. **Definition of Done (every story):** AC met with evidence link, CI green, contracts backward-compatible, dashboards updated, docs updated (this file + service README).
