@@ -26,6 +26,15 @@ public class OrderLifecycleService {
         this.serializer = serializer;
     }
 
+    /** P9-F3: order listing for the SPA order area (null filter = match all). */
+    public java.util.List<Order> search(String customerId, String status) {
+        return orders.all().stream()
+            .filter(o -> customerId == null || customerId.equals(o.customerId()))
+            .filter(o -> status == null || status.equals(o.status().name()))
+            .sorted(java.util.Comparator.comparing(Order::orderId))
+            .toList();
+    }
+
     public Optional<Order> get(String orderId) {
         return orders.find(orderId);
     }

@@ -17,6 +17,11 @@ public class JpaOrderStore implements OrderStore {
     }
 
     @Override
+    public java.util.List<Order> all() {
+        return orders.findAll().stream().map(this::toDomain).toList();
+    }
+
+    @Override
     public Optional<Order> find(String orderId) {
         return orders.findById(orderId).map(this::toDomain);
     }

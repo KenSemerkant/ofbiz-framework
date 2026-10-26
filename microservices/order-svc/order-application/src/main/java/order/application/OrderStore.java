@@ -8,5 +8,8 @@ public interface OrderStore {
 
     Optional<Order> find(String orderId);
 
+    /** P9-F3: order listing for the SPA order area. */
+    java.util.List<Order> all();
+
     void save(Order order);
 }

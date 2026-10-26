@@ -27,6 +27,12 @@ public class QuoteService {
     public record QuoteLine(String productId, String facilityId, BigDecimal quantity) {
     }
 
+    /** P9-F3: quote listing for the SPA order area. */
+    public java.util.List<Quote> all() {
+        return quotes.all().stream()
+            .sorted(java.util.Comparator.comparing(Quote::quoteId)).toList();
+    }
+
     public Optional<Quote> get(String quoteId) {
         return quotes.find(quoteId);
     }

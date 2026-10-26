@@ -22,6 +22,15 @@ public final class JpaQuoteReturnStores {
         }
 
         @Override
+        public java.util.List<Quote> all() {
+            return quotes.findAll().stream()
+                .map(entity -> Quote.rehydrate(entity.getQuoteId(),
+                    entity.getCustomerId(), OrderJson.deserializeLines(entity.getLines()),
+                    Quote.Status.valueOf(entity.getStatus())))
+                .toList();
+        }
+
+        @Override
         public Optional<Quote> find(String quoteId) {
             return quotes.findById(quoteId).map(entity -> Quote.rehydrate(entity.getQuoteId(),
                 entity.getCustomerId(), OrderJson.deserializeLines(entity.getLines()),
@@ -42,6 +51,15 @@ public final class JpaQuoteReturnStores {
 
         public JpaReturnStore(ReturnRepository returns) {
             this.returns = returns;
+        }
+
+        @Override
+        public java.util.List<ReturnOrder> all() {
+            return returns.findAll().stream()
+                .map(entity -> ReturnOrder.rehydrate(entity.getReturnId(),
+                    entity.getOrderId(), OrderJson.deserializeReturnLines(entity.getLines()),
+                    ReturnOrder.Status.valueOf(entity.getStatus())))
+                .toList();
         }
 
         @Override

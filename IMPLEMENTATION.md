@@ -291,7 +291,9 @@ into identity.
 - **P9-F2 product + facilities → product-svc + inventory-svc (XL):** catalog, categories, prices, stores, facilities, stock (284-screen inventory + facility slice).
   - Implemented (2026-10-26): product `GET /categories`, `GET /stores`; inventory `GET /facilities`, `GET /inventory-items?productId&facilityId`, `GET /shipments?orderId` (listings alongside the P3 CRUD/lifecycle + P8 paged product/price/tree surfaces); SPA Catalog expanded to 6 tabs (products/categories/stores/facilities/stock/shipments); catalog spec extended. AC: [x] REST surface covers triaged screens' data needs [x] SPA + parity specs green (40-run-e2e.sh 15/15, 2026-10-26T15:36:50Z) [x] ArchUnit + jacoco 95% gates green.
   - Descopes: product features/associations/images/reviews/content-mapping admin slices and facility calendars/location admin — no migrated data path; cost calcs (finance context); TaxAuthority (cross-context: product+finance, revisit if tax screens regain users).
-- **P9-F3 order → order-svc (L):** order entry, quotes, returns, order books (222-screen inventory). AC: [ ] as per per-track DoD.
+- **P9-F3 order → order-svc (L):** order entry, quotes, returns, order books (222-screen inventory).
+  - Implemented (2026-10-26): `GET /orders?customerId&status`, `GET /quotes`, `GET /returns` (listings alongside P4 lifecycle surfaces); SPA Orders area (3 tabs); `tests/e2e/specs/orders.spec.ts`. AC: [x] REST surface covers triaged screens' data needs [x] SPA + parity specs green (40-run-e2e.sh 17/17, 2026-10-26T15:43:21Z) [x] jacoco 95% gate green.
+  - Descopes: order-entry edit screens (SPA order creation flows via journeys: quote→convert, direct order POST), requirement/order-book admin slices — no migrated data path; lookup/decorator/print screens — sub-screens of implemented flows.
 - **P9-F4 party → party-svc (L):** party manager, relationships, classifications (146-screen inventory; party-svc at 4 endpoints — expand). AC: [ ] as per per-track DoD.
 - **P9-F5 content → content-svc (M):** 142-screen inventory. AC: [ ] as per per-track DoD.
 - **P9-F6 humanres → humanres-svc (M):** 121-screen inventory. AC: [ ] as per per-track DoD.

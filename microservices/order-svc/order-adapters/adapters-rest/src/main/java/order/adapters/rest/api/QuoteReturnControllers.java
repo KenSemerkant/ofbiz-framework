@@ -82,6 +82,12 @@ public final class QuoteReturnControllers {
             }
         }
 
+        /** P9-F3: quote listing for the SPA order area. */
+        @GetMapping
+        java.util.List<QuoteResponse> list() {
+            return quotes.all().stream().map(this::toResponse).toList();
+        }
+
         @GetMapping("/{quoteId}")
         ResponseEntity<QuoteResponse> get(@PathVariable String quoteId) {
             return quotes.get(quoteId).map(this::toResponse).map(ResponseEntity::ok)
@@ -135,6 +141,12 @@ public final class QuoteReturnControllers {
             } catch (NoSuchElementException e) {
                 return ResponseEntity.notFound().build();
             }
+        }
+
+        /** P9-F3: return listing for the SPA order area. */
+        @GetMapping
+        java.util.List<ReturnResponse> list() {
+            return returns.all().stream().map(this::toResponse).toList();
         }
 
         @GetMapping("/{returnId}")

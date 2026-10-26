@@ -36,6 +36,12 @@ public class ReturnService {
         this.serializer = serializer;
     }
 
+    /** P9-F3: return listing for the SPA order area. */
+    public java.util.List<ReturnOrder> all() {
+        return returns.all().stream()
+            .sorted(java.util.Comparator.comparing(ReturnOrder::returnId)).toList();
+    }
+
     public Optional<ReturnOrder> get(String returnId) {
         return returns.find(returnId);
     }

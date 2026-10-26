@@ -12,6 +12,7 @@ import Campaign from './screens/Campaign';
 import Content from './screens/Content';
 import CalendarScreen from './screens/CalendarScreen';
 import Accounting from './screens/Accounting';
+import OrdersArea from './screens/OrdersArea';
 
 export default function App() {
   const [params] = useSearchParams();
@@ -46,6 +47,7 @@ export default function App() {
         <NavLink to="/content">Content</NavLink>
         <NavLink to="/calendar">Calendar</NavLink>
         <NavLink to="/accounting">Accounting</NavLink>
+        <NavLink to="/orders">Orders</NavLink>
         {!signedIn
           ? <button data-testid="signin" onClick={() => void login()}>Sign in</button>
           : <span data-testid="signed-in">signed in</span>}
@@ -66,6 +68,7 @@ export default function App() {
         <Route path="/content" element={<Content />} />
         <Route path="/calendar" element={<CalendarScreen />} />
         <Route path="/accounting" element={<Accounting />} />
+        <Route path="/orders" element={<OrdersArea />} />
       </Routes>
       </main>
       <footer><span className="wordmark">OfBiz</span> — journeys</footer>

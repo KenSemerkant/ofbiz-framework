@@ -8,5 +8,8 @@ public interface ReturnStore {
 
     Optional<ReturnOrder> find(String returnId);
 
+    /** P9-F3: return listing for the SPA order area. */
+    java.util.List<ReturnOrder> all();
+
     void save(ReturnOrder returns);
 }

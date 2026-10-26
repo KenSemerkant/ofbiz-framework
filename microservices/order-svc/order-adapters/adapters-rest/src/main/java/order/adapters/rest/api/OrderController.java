@@ -80,6 +80,15 @@ public class OrderController {
         return ResponseEntity.status(HttpStatus.CREATED).body(toResponse(order));
     }
 
+    /** P9-F3: order search for the SPA order area (null filter = match all). */
+    @GetMapping
+    java.util.List<OrderResponse> search(@org.springframework.web.bind.annotation.RequestParam(
+            required = false) String customerId,
+            @org.springframework.web.bind.annotation.RequestParam(required = false)
+            String status) {
+        return lifecycle.search(customerId, status).stream().map(this::toResponse).toList();
+    }
+
     @GetMapping("/{orderId}")
     ResponseEntity<OrderResponse> get(@PathVariable String orderId) {
         return lifecycle.get(orderId).map(this::toResponse).map(ResponseEntity::ok)

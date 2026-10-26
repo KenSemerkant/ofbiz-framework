@@ -208,6 +208,20 @@ class OrderApiTest {
         assertEquals(200, get("/api/v1/returns/" + returnId).statusCode());
         assertEquals(404, get("/api/v1/returns/RET-NOPE").statusCode());
         assertEquals(404, get("/api/v1/quotes/QUOTE-NOPE").statusCode());
+
+        // P9-F3 parity slice: order/quote/return listings for the SPA order area
+        JsonNode orderList = json.readTree(
+            get("/api/v1/orders?customerId=CUST-1&status=COMPLETED").body());
+        assertTrue(orderList.isArray() && orderList.size() >= 1);
+        boolean foundOrder = false;
+        for (int i = 0; i < orderList.size(); i++) {
+            foundOrder |= orderId.equals(orderList.get(i).path("orderId").asText());
+        }
+        assertTrue(foundOrder);
+        JsonNode quoteList = json.readTree(get("/api/v1/quotes").body());
+        assertTrue(quoteList.isArray() && quoteList.size() >= 1);
+        JsonNode returnList = json.readTree(get("/api/v1/returns").body());
+        assertTrue(returnList.isArray() && returnList.size() >= 1);
     }
 
     @Test
