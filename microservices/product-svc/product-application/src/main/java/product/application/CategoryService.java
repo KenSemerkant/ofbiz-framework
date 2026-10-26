@@ -36,6 +36,13 @@ public class CategoryService {
         return store.find(productCategoryId);
     }
 
+    /** P9-F2: category listing for the SPA catalog area. */
+    public java.util.List<Category> all() {
+        return store.all();
+    }
+
+
+
     public void upsert(Category category) {
         store.save(category);
         outbox.append(CATEGORY_UPDATED, category.productCategoryId(),

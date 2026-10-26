@@ -28,6 +28,14 @@ public class ShipmentService {
         this.serializer = serializer;
     }
 
+    /** P9-F2: shipment listing for the SPA catalog area (null filter = match all). */
+    public java.util.List<Shipment> search(String orderId) {
+        return shipments.all().stream()
+            .filter(s -> orderId == null || orderId.equals(s.orderId()))
+            .sorted(java.util.Comparator.comparing(Shipment::shipmentId))
+            .toList();
+    }
+
     public Optional<Shipment> get(String shipmentId) {
         return shipments.find(shipmentId);
     }

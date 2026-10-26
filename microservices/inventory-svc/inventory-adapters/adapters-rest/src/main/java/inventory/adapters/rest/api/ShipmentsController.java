@@ -70,6 +70,13 @@ public class ShipmentsController {
         }
     }
 
+    /** P9-F2: shipment listing for the SPA catalog area. */
+    @GetMapping
+    java.util.List<ShipmentResponse> search(@org.springframework.web.bind.annotation.RequestParam(
+            required = false) String orderId) {
+        return shipmentService.search(orderId).stream().map(this::toResponse).toList();
+    }
+
     @GetMapping("/{shipmentId}")
     ResponseEntity<ShipmentResponse> get(@PathVariable String shipmentId) {
         return shipmentService.get(shipmentId)

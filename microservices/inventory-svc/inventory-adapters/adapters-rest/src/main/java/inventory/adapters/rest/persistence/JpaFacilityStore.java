@@ -27,6 +27,11 @@ public class JpaFacilityStore implements FacilityStore {
     }
 
     @Override
+    public java.util.List<Facility> all() {
+        return facilities.findAll().stream().map(this::toDomain).toList();
+    }
+
+    @Override
     public boolean delete(String facilityId) {
         if (!facilities.existsById(facilityId)) {
             return false;

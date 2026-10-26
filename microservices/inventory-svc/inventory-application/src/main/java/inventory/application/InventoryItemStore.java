@@ -12,5 +12,8 @@ public interface InventoryItemStore {
     /** Items holding a product at a facility, in stable row order (P3-F2-S2). */
     List<InventoryItem> findByProductIdAndFacilityId(String productId, String facilityId);
 
+    /** P9-F2: stock listing for the SPA catalog area (filters applied in service). */
+    List<InventoryItem> all();
+
     void save(InventoryItem item);
 }

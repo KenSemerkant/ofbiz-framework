@@ -20,6 +20,11 @@ public class StoreService {
         return stores.find(productStoreId);
     }
 
+    /** P9-F2: store listing for the SPA catalog area. */
+    public java.util.List<Store> all() {
+        return stores.all();
+    }
+
     public void upsert(Store store) {
         stores.save(store);
     }

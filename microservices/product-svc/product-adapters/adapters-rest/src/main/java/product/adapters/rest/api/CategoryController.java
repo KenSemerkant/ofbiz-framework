@@ -64,6 +64,12 @@ public class CategoryController {
             .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    /** P9-F2: category listing for the SPA catalog area. */
+    @GetMapping
+    List<CategoryResponse> list() {
+        return categoryService.all().stream().map(this::toResponse).toList();
+    }
+
     /** Category tree query (P3-F1-S1 AC). */
     @GetMapping("/{productCategoryId}/tree")
     ResponseEntity<CategoryTreeResponse> tree(@PathVariable String productCategoryId) {

@@ -25,6 +25,12 @@ public class FacilityService {
         this.serializer = serializer;
     }
 
+    /** P9-F2: facility listing for the SPA catalog area. */
+    public java.util.List<Facility> all() {
+        return facilities.all().stream()
+            .sorted(java.util.Comparator.comparing(Facility::facilityId)).toList();
+    }
+
     public Optional<Facility> get(String facilityId) {
         return facilities.find(facilityId);
     }

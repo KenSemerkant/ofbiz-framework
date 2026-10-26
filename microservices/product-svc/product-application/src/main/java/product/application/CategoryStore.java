@@ -14,5 +14,8 @@ public interface CategoryStore {
     /** Direct children of a category, ordered by category id. */
     List<Category> findChildren(String productCategoryId);
 
+    /** P9-F2: category listing for the SPA catalog area. */
+    List<Category> all();
+
     void delete(String productCategoryId);
 }

@@ -12,4 +12,7 @@ public interface FacilityStore {
 
     /** @return true if a row existed and was removed. */
     boolean delete(String facilityId);
+
+    /** P9-F2: facility listing for the SPA catalog area. */
+    java.util.List<Facility> all();
 }

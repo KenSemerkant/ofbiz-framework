@@ -27,6 +27,13 @@ public class JpaStores implements Stores {
     }
 
     @Override
+    public java.util.List<Store> all() {
+        // ponytail: in-memory sort — store counts are dozens
+        return stores.findAll().stream().map(this::toDomain)
+            .sorted(java.util.Comparator.comparing(Store::productStoreId)).toList();
+    }
+
+    @Override
     public boolean delete(String productStoreId) {
         if (!stores.existsById(productStoreId)) {
             return false;

@@ -33,6 +33,11 @@ public class JpaInventoryItemStore implements InventoryItemStore {
     }
 
     @Override
+    public List<InventoryItem> all() {
+        return items.findAll().stream().map(InventoryItemEntity::toDomain).toList();
+    }
+
+    @Override
     public void save(InventoryItem item) {
         InventoryItemEntity entity = items.findById(item.inventoryItemId())
             .orElseGet(() -> new InventoryItemEntity(item.inventoryItemId()));

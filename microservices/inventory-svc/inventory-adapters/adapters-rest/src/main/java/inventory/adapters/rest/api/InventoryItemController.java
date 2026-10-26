@@ -73,6 +73,16 @@ public class InventoryItemController {
         }
     }
 
+    /** P9-F2: stock search for the SPA catalog area (null filter = match all). */
+    @GetMapping
+    java.util.List<ItemResponse> search(@org.springframework.web.bind.annotation.RequestParam(
+            required = false) String productId,
+            @org.springframework.web.bind.annotation.RequestParam(required = false)
+            String facilityId) {
+        return inventoryService.search(productId, facilityId).stream()
+            .map(this::toResponse).toList();
+    }
+
     @GetMapping("/{inventoryItemId}")
     ResponseEntity<ItemResponse> get(@PathVariable String inventoryItemId) {
         return inventoryService.get(inventoryItemId)

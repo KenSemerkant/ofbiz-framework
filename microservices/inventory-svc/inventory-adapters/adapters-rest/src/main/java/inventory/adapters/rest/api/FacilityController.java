@@ -56,6 +56,12 @@ public class FacilityController {
         return ResponseEntity.status(HttpStatus.CREATED).body(toResponse(facility));
     }
 
+    /** P9-F2: facility listing for the SPA catalog area. */
+    @GetMapping
+    java.util.List<FacilityResponse> list() {
+        return facilityService.all().stream().map(this::toResponse).toList();
+    }
+
     @GetMapping("/{facilityId}")
     ResponseEntity<FacilityResponse> get(@PathVariable String facilityId) {
         return facilityService.get(facilityId)

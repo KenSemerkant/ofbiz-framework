@@ -45,6 +45,12 @@ public class StoreController {
         return ResponseEntity.status(HttpStatus.CREATED).body(toResponse(store));
     }
 
+    /** P9-F2: store listing for the SPA catalog area. */
+    @GetMapping
+    java.util.List<StoreResponse> list() {
+        return storeService.all().stream().map(this::toResponse).toList();
+    }
+
     @GetMapping("/{productStoreId}")
     ResponseEntity<StoreResponse> get(@PathVariable String productStoreId) {
         return storeService.get(productStoreId)

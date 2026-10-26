@@ -12,4 +12,7 @@ public interface Stores {
 
     /** @return true if a row existed and was removed. */
     boolean delete(String productStoreId);
+
+    /** P9-F2: store listing for the SPA catalog area. */
+    java.util.List<Store> all();
 }

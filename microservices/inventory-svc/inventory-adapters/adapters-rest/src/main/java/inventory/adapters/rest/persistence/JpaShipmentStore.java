@@ -21,6 +21,11 @@ public class JpaShipmentStore implements ShipmentStore {
     }
 
     @Override
+    public java.util.List<Shipment> all() {
+        return shipments.findAll().stream().map(ShipmentEntity::toDomain).toList();
+    }
+
+    @Override
     public void save(Shipment shipment) {
         ShipmentEntity entity = shipments.findById(shipment.shipmentId())
             .orElseGet(() -> new ShipmentEntity(shipment.shipmentId()));

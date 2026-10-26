@@ -28,6 +28,18 @@ public class InventoryService {
         this.serializer = serializer;
     }
 
+    /** P9-F2: stock search for the SPA catalog area (null filter = match all). */
+    public java.util.List<InventoryItem> search(String productId, String facilityId) {
+        if (productId != null && facilityId != null) {
+            return items.findByProductIdAndFacilityId(productId, facilityId);
+        }
+        return items.all().stream()
+            .filter(i -> productId == null || productId.equals(i.productId()))
+            .filter(i -> facilityId == null || facilityId.equals(i.facilityId()))
+            .sorted(java.util.Comparator.comparing(InventoryItem::inventoryItemId))
+            .toList();
+    }
+
     public Optional<InventoryItem> get(String inventoryItemId) {
         return items.find(inventoryItemId);
     }

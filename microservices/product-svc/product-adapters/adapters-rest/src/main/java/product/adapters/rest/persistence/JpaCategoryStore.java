@@ -30,6 +30,16 @@ public class JpaCategoryStore implements CategoryStore {
     }
 
     @Override
+    public List<Category> all() {
+        // ponytail: in-memory sort — category counts are hundreds, not millions
+        return categories.findAll().stream()
+            .map(e -> new Category(e.getProductCategoryId(), e.getPrimaryParentCategoryId(),
+                e.getCategoryName()))
+            .sorted(java.util.Comparator.comparing(Category::productCategoryId))
+            .toList();
+    }
+
+    @Override
     public void delete(String productCategoryId) {
         categories.deleteById(productCategoryId);
     }
