@@ -154,10 +154,12 @@ mono_stop() {
 mono_backup() {
   local dir="backups/mono/$(ts)" db
   mkdir -p "${dir}"
+  trap 'rm -rf "${dir}"' ERR   # failed backup must not leave a valid-looking partial dir
   for db in ${MONO_DBS}; do
     echo "  -- ${db}"
     mono exec -T db pg_dump -U postgres "${db}" | gzip > "${dir}/${db}.sql.gz"
   done
+  trap - ERR
   echo "backup complete: ${dir}"
 }
 
