@@ -192,9 +192,11 @@ micro_fwd() {
     return
   fi
   : > "${FWD_PIDS}"
-  kube -n observability port-forward svc/jaeger-query 16686:16686 >/dev/null 2>&1 & echo $! >> "${FWD_PIDS}"
-  kube -n observability port-forward svc/grafana 3000:3000        >/dev/null 2>&1 & echo $! >> "${FWD_PIDS}"
-  kube -n "${NS}" port-forward svc/mailhog 8025:8025              >/dev/null 2>&1 & echo $! >> "${FWD_PIDS}"
+  # direct kubectl (not the kube() wrapper): backgrounding a function puts the
+  # subshell PID in $!, leaving kubectl orphaned when killed
+  kubectl --context "${CTX}" -n observability port-forward svc/jaeger-query 16686:16686 >/dev/null 2>&1 & echo $! >> "${FWD_PIDS}"
+  kubectl --context "${CTX}" -n observability port-forward svc/grafana 3000:3000        >/dev/null 2>&1 & echo $! >> "${FWD_PIDS}"
+  kubectl --context "${CTX}" -n "${NS}" port-forward svc/mailhog 8025:8025              >/dev/null 2>&1 & echo $! >> "${FWD_PIDS}"
   echo "jaeger http://localhost:16686  grafana http://localhost:3000  mailhog http://localhost:8025"
   echo "stop with: ops micro fwd stop"
 }
