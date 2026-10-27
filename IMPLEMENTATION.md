@@ -343,7 +343,7 @@ backend readiness; each tier ships SPA + spec + e2e green.
 - **P10-F2 (S):** Tier 3 — DESCOPE (recorded): user logins + security groups
   (identity-svc territory — cross-context, needs an ADR before any surface),
   visit tracking, address-match maps (archived data, no path).
-- **P10-F1 (M):** Unified ops toolkit `ops` (root dispatcher: micro up/down/status/logs/restart/deploy/verify/seed/backup/restore/fwd + mono build/start/stop/status/logs/psql/backup/restore via postgres-demo compose, durable pgdata). AC: [ ] `bash -n ops` clean [ ] `ops help` lists all 19 subcommands [ ] `ops micro status|restart|backup` green on live cluster [ ] `ops mono start` → https://localhost:8443 responds, restart keeps pgdata [ ] backups land in gitignored `backups/`. Spec: docs/superpowers/specs/2026-10-26-ops-toolkit-design.md — plan: docs/superpowers/plans/2026-10-27-ops-toolkit.md
+- **P10-F3 (M):** Unified ops toolkit `ops` (root dispatcher: micro up/down/status/logs/restart/deploy/verify/seed/backup/restore/fwd + mono build/start/stop/status/logs/psql/backup/restore via postgres-demo compose, durable pgdata). AC: [ ] `bash -n ops` clean [ ] `ops help` lists all 19 subcommands [ ] `ops micro status|restart|backup` green on live cluster [ ] `ops mono start` → https://localhost:8443 responds, restart keeps pgdata [ ] backups land in gitignored `backups/`. Spec: docs/superpowers/specs/2026-10-26-ops-toolkit-design.md — plan: docs/superpowers/plans/2026-10-27-ops-toolkit.md
 
 ---
 
