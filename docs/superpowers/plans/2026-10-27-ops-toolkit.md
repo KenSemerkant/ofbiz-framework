@@ -126,7 +126,7 @@ Expected: no output, exit 0
 - [ ] **Step 3: Help and dispatch checks**
 
 Run: `./ops help | grep -c 'ops micro\|ops mono'`
-Expected: `18`
+Expected: `19` (11 micro + 8 mono action lines)
 
 Run: `./ops bogus; echo "exit=$?"`
 Expected: usage on stderr, `exit=1`
@@ -302,7 +302,7 @@ mono_start() {
   command -v docker >/dev/null || die "docker not installed"
   docker image inspect ofbiz-docker >/dev/null 2>&1 \
     || { echo "image ofbiz-docker missing — building"; docker build -t ofbiz-docker monolith/; }
-  cat > "${MONO_DIR}/docker-compose.ops-override.yml" <<'EOF'
+  cat > "${MONO_DIR}/docker-compose.override.yml" <<'EOF'
 # ops-managed: durable postgres data for the postgres-demo example.
 services:
   db:
@@ -377,7 +377,7 @@ Run: `./ops mono restore backups/mono/x.sql.gz`
 Expected: DRY-RUN message, exit 1
 
 Manual (heavy, ~10–20 min, requires Docker running): `./ops mono build && ./ops mono start && ./ops mono status`
-Expected: build succeeds; containers up; after demo load, `https://localhost:8443 -> HTTP 200` or `302`. Then `./ops mono backup && find backups/mono -name '*.sql.gz' | wc -l` → `3`. Then `./ops mono stop` → `stopped; pgdata volume kept`, and `docker volume ls | grep ops_pgdata` shows the volume. Then `./ops mono start` again — must NOT re-run initdb (pgdata persisted; logs lack `initdb` lines).
+Expected: build succeeds; containers up; after demo load, `https://localhost:8443 -> HTTP 200` or `302`. Then `./ops mono backup && find backups/mono -name '*.sql.gz' | wc -l` → `3`. Then `./ops mono stop` → `stopped; pgdata volume kept`, and `docker volume ls | grep ops_pgdata` shows the volume. Then `./ops mono start` again — must NOT re-run initdb (pgdata persisted; logs lack `initdb` lines). Name is `docker-compose.override.yml` (auto-merged by compose; `docker-compose.ops-override.yml` would be silently ignored).
 
 - [ ] **Step 4: Commit**
 
@@ -401,6 +401,7 @@ Append to root `.gitignore` (file exists, ends with `/docs/asciidoc/images/`):
 
 ```
 backups/
+monolith/docker/examples/postgres-demo/docker-compose.override.yml
 ```
 
 - [ ] **Step 2: Amend spec to match reality**
@@ -422,7 +423,7 @@ Tick the AC boxes (`[ ]` → `[x]`) only for checks actually run and passing.
 - [ ] **Step 4: Final gate**
 
 Run: `bash -n ops && ./ops help | grep -c 'ops micro\|ops mono' && git status --short`
-Expected: `18`, working tree only shows the three modified files; `backups/` NOT listed (ignored)
+Expected: `19`, working tree only shows the three modified files; `backups/` NOT listed (ignored)
 
 - [ ] **Step 5: Commit**
 
