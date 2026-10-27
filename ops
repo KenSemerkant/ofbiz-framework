@@ -66,12 +66,45 @@ ops — unified operations toolkit
 EOF
 }
 
+micro_fwd() {
+  if [ "${1:-}" = stop ]; then
+    [ -f "${FWD_PIDS}" ] || die "no forwards running"
+    xargs kill < "${FWD_PIDS}" 2>/dev/null || true
+    rm -f "${FWD_PIDS}"
+    echo "forwards stopped"
+    return
+  fi
+  : > "${FWD_PIDS}"
+  kube -n observability port-forward svc/jaeger-query 16686:16686 >/dev/null 2>&1 & echo $! >> "${FWD_PIDS}"
+  kube -n observability port-forward svc/grafana 3000:3000        >/dev/null 2>&1 & echo $! >> "${FWD_PIDS}"
+  kube -n "${NS}" port-forward svc/mailhog 8025:8025              >/dev/null 2>&1 & echo $! >> "${FWD_PIDS}"
+  echo "jaeger http://localhost:16686  grafana http://localhost:3000  mailhog http://localhost:8025"
+  echo "stop with: ops micro fwd stop"
+}
+
 cmd_micro() {
   local action="${1:-}"; shift || true
   case "${action}" in
-    up|down|status|logs|restart|deploy|verify|seed|backup|restore|fwd)
-      die "micro ${action}: not implemented yet" ;;
-    *) die "unknown micro action '${action}' (see: ops help)" ;;
+    up)      sh infra/dev/up.sh ;;
+    down)    require_yes "${1:-}" "terraform-destroy the dev cluster (sh infra/dev/down.sh)"
+             sh infra/dev/down.sh ;;
+    status)  kube get pods -A
+             echo
+             kube -n "${NS}" get deploy
+             echo
+             echo "gateway: http://localhost:30080 (istio NodePort) — SPA dev server on :4200 proxies it" ;;
+    logs)    check_deploy "${1:-}"
+             kube -n "${NS}" logs -f "deploy/${1}" ;;
+    restart) check_deploy "${1:-}"
+             kube -n "${NS}" rollout restart "deploy/${1}"
+             kube -n "${NS}" rollout status "deploy/${1}" ;;
+    deploy)  sh platform/services/10-deploy.sh ;;
+    verify)  sh platform/services/20-verify.sh ;;
+    seed)    sh platform/services/40-seed-demo.sh ;;
+    backup)  micro_backup ;;
+    restore) micro_restore "${1:-}" "${2:-}" ;;
+    fwd)     micro_fwd "${1:-}" ;;
+    *)       die "unknown micro action '${action}' (see: ops help)" ;;
   esac
 }
 
