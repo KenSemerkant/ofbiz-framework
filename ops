@@ -74,12 +74,25 @@ micro_fwd() {
     echo "forwards stopped"
     return
   fi
+  [ -z "${1:-}" ] || die "usage: ops micro fwd [stop]"
+  if [ -f "${FWD_PIDS}" ]; then
+    local pid
+    for pid in $(cat "${FWD_PIDS}"); do
+      kill -0 "${pid}" 2>/dev/null && die "forwards already running — ops micro fwd stop first"
+    done
+  fi
   : > "${FWD_PIDS}"
   # direct kubectl (not the kube() wrapper): backgrounding a function puts the
   # subshell PID in $!, leaving kubectl orphaned when killed
   kubectl --context "${CTX}" -n observability port-forward svc/jaeger-query 16686:16686 >/dev/null 2>&1 & echo $! >> "${FWD_PIDS}"
   kubectl --context "${CTX}" -n observability port-forward svc/grafana 3000:3000        >/dev/null 2>&1 & echo $! >> "${FWD_PIDS}"
   kubectl --context "${CTX}" -n "${NS}" port-forward svc/mailhog 8025:8025              >/dev/null 2>&1 & echo $! >> "${FWD_PIDS}"
+  sleep 1
+  local dead=""
+  for pid in $(cat "${FWD_PIDS}"); do
+    kill -0 "${pid}" 2>/dev/null || dead="${dead} ${pid}"
+  done
+  [ -z "${dead}" ] || die "port-forward failed (pid${dead}) — check kubectl/context; clean up with: ops micro fwd stop"
   echo "jaeger http://localhost:16686  grafana http://localhost:3000  mailhog http://localhost:8025"
   echo "stop with: ops micro fwd stop"
 }
