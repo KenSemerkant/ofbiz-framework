@@ -1,0 +1,92 @@
+#!/usr/bin/env bash
+#
+# ops — unified operations & maintenance entrypoint.
+#   micro: kind-cluster microservices stack (delegates to platform/* + infra/dev/*)
+#   mono:  monolith via monolith/docker/examples/postgres-demo compose
+# Spec: docs/superpowers/specs/2026-10-26-ops-toolkit-design.md
+#
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")" && pwd)"
+cd "$ROOT"
+
+NS="ofbiz"
+CTX="kind-ofbiz"
+PG_POD="postgres-0"
+DEPLOYS="identity-svc gateway audit-svc notification-svc search-svc party-svc product-svc inventory-svc order-svc billing-svc finance-svc manufacturing-svc workeffort-svc humanres-svc content-svc marketing-svc demo-svc"
+SVC_DBS="party product inventory search orderdb billing finance manufacturing workeffort humanres content marketing"
+MONO_DIR="${ROOT}/monolith/docker/examples/postgres-demo"
+MONO_DBS="ofbizmaindb ofbizolapdb ofbiztenantdb"
+FWD_PIDS="/tmp/ops-fwd.pids"
+
+die() { echo "ERROR: $*" >&2; exit 1; }
+ts()   { date +%Y%m%d-%H%M%S; }
+kube() { kubectl --context "${CTX}" "$@"; }
+mono() { docker compose --project-directory "${MONO_DIR}" "$@"; }
+
+require_yes() { # $1=flag $2=what would happen
+  if [ "${1:-}" != "--yes" ]; then
+    echo "DRY-RUN (nothing done). Would: ${2}"
+    echo "Re-run with --yes to execute."
+    exit 1
+  fi
+}
+
+check_deploy() {
+  case " ${DEPLOYS} " in
+    *" ${1:-} "*) ;;
+    *) die "unknown deploy '${1:-}' — choose one of: ${DEPLOYS}" ;;
+  esac
+}
+
+usage() {
+  cat <<'EOF'
+ops — unified operations toolkit
+
+  ops micro up            full stack up (infra/dev/up.sh: terraform kind + ansible stack)
+  ops micro down [--yes]  full teardown (infra/dev/down.sh: terraform destroy) — --yes required
+  ops micro status        pods + deployments + gateway endpoint
+  ops micro logs S        follow logs of deployment S
+  ops micro restart S     rollout restart + status of deployment S
+  ops micro deploy        rebuild + redeploy all services (platform/services/10-deploy.sh)
+  ops micro verify        run platform/services/20-verify.sh
+  ops micro seed          run platform/services/40-seed-demo.sh
+  ops micro backup        pg_dump all service DBs -> backups/micro/<ts>/
+  ops micro restore DIR [--yes]    restore dumps from DIR — --yes required
+  ops micro fwd [stop]    port-forward jaeger(16686) grafana(3000) mailhog(8025)
+
+  ops mono build          docker build -t ofbiz-docker monolith/
+  ops mono start          compose up -d (durable pgdata via ops override)
+  ops mono stop           compose down (STOP_ALL=1 wipes volumes too)
+  ops mono status         compose ps + https://localhost:8443 check
+  ops mono logs           follow ofbiz container logs
+  ops mono psql           psql shell as ofbiz @ ofbizmaindb
+  ops mono backup         pg_dump all mono DBs -> backups/mono/<ts>/
+  ops mono restore FILE [--yes]   restore one dump file — --yes required
+EOF
+}
+
+cmd_micro() {
+  local action="${1:-}"; shift || true
+  case "${action}" in
+    up|down|status|logs|restart|deploy|verify|seed|backup|restore|fwd)
+      die "micro ${action}: not implemented yet" ;;
+    *) die "unknown micro action '${action}' (see: ops help)" ;;
+  esac
+}
+
+cmd_mono() {
+  local action="${1:-}"; shift || true
+  case "${action}" in
+    build|start|stop|status|logs|psql|backup|restore)
+      die "mono ${action}: not implemented yet" ;;
+    *) die "unknown mono action '${action}' (see: ops help)" ;;
+  esac
+}
+
+case "${1:-help}" in
+  micro) shift; cmd_micro "$@" ;;
+  mono)  shift; cmd_mono "$@" ;;
+  help|--help|-h) usage ;;
+  *) usage >&2; exit 1 ;;
+esac
