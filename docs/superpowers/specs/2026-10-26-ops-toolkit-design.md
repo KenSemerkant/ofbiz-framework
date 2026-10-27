@@ -41,7 +41,7 @@ ops mono backup       # pg_dump all mono DBs (ofbizmaindb/olap/tenant) -> backup
 ops mono restore FILE # requires --yes; pipe dump into db container
 ```
 
-`S` = deployment name among the 15 `-svc` services (identity, audit, notification, search, party, product, inventory, order, billing, finance, manufacturing, workeffort, humanres, content, marketing) or `gateway`. Tab completion dropped — a child process cannot register completions in the parent shell; would require sourcing the dispatcher.
+`S` = deployment name among the 15 `-svc` services (identity, audit, notification, search, party, product, inventory, order, billing, finance, manufacturing, workeffort, humanres, content, marketing), `demo-svc`, or `gateway`. Tab completion dropped — a child process cannot register completions in the parent shell; would require sourcing the dispatcher.
 
 ## Non-goals
 
