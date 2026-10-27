@@ -78,7 +78,7 @@ ops — unified operations toolkit
   ops micro verify        run platform/services/20-verify.sh
   ops micro seed          run platform/services/40-seed-demo.sh
   ops micro backup        pg_dump all service DBs -> backups/micro/<ts>/
-  ops micro restore DIR [--yes]    restore dumps from DIR — --yes required
+  ops micro restore DIR [--yes]    restore dumps into existing DBs (expects fresh/empty cluster; duplicate keys abort) — --yes required
   ops micro fwd [stop]    port-forward jaeger(16686) grafana(3000) mailhog(8025)
 
   ops mono build          docker build -t ofbiz-docker monolith/
@@ -257,10 +257,12 @@ git commit -m "Added: ops micro lifecycle — up/down/status/logs/restart/deploy
 micro_backup() {
   local dir="backups/micro/$(ts)" db
   mkdir -p "${dir}"
+  trap 'rm -rf "${dir}"' ERR   # failed backup must not leave a valid-looking partial dir
   for db in ${SVC_DBS}; do
     echo "  -- ${db}"
     kube -n "${NS}" exec "${PG_POD}" -- pg_dump -U "${db}" "${db}" | gzip > "${dir}/${db}.sql.gz"
   done
+  trap - ERR
   echo "backup complete: ${dir}"
 }
 
@@ -274,7 +276,7 @@ micro_restore() { # DIR FLAG
     db="$(basename "${f}" .sql.gz)"
     case " ${SVC_DBS} " in *" ${db} "*) ;; *) die "dump name '${db}' is not a known service DB";; esac
     echo "  -- restoring ${db}"
-    gunzip -c "${f}" | kube -n "${NS}" exec -i "${PG_POD}" -- psql -U "${db}" -d "${db}" >/dev/null
+    gunzip -c "${f}" | kube -n "${NS}" exec -i "${PG_POD}" -- psql -v ON_ERROR_STOP=1 -U "${db}" -d "${db}" >/dev/null
   done
   echo "restore complete"
 }
@@ -357,7 +359,7 @@ mono_restore() { # FILE FLAG
   local db
   db="$(basename "${file}" .sql.gz)"
   case " ${MONO_DBS} " in *" ${db} "*) ;; *) die "dump name '${db}' not one of: ${MONO_DBS}";; esac
-  gunzip -c "${file}" | mono exec -T db psql -U postgres -d "${db}" >/dev/null
+  gunzip -c "${file}" | mono exec -T db psql -v ON_ERROR_STOP=1 -U postgres -d "${db}" >/dev/null
   echo "restore complete: ${db}"
 }
 
