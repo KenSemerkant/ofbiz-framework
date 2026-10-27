@@ -124,6 +124,54 @@ micro_fwd() {
   echo "stop with: ops micro fwd stop"
 }
 
+mono_start() {
+  command -v docker >/dev/null || die "docker not installed"
+  docker image inspect ofbiz-docker >/dev/null 2>&1 \
+    || { echo "image ofbiz-docker missing — building"; docker build -t ofbiz-docker monolith/; }
+  cat > "${MONO_DIR}/docker-compose.override.yml" <<'EOF'
+# ops-managed: durable postgres data for the postgres-demo example.
+services:
+  db:
+    volumes:
+      - ops_pgdata:/var/lib/postgresql/data
+volumes:
+  ops_pgdata:
+EOF
+  mono up -d
+  echo "starting (first run loads demo data — takes minutes). UI: https://localhost:8443"
+}
+
+mono_stop() {
+  if [ "${STOP_ALL:-0}" = "1" ]; then
+    mono down -v
+    echo "stopped; volumes wiped (STOP_ALL=1)"
+  else
+    mono down
+    echo "stopped; pgdata volume kept (set STOP_ALL=1 to wipe)"
+  fi
+}
+
+mono_backup() {
+  local dir="backups/mono/$(ts)" db
+  mkdir -p "${dir}"
+  for db in ${MONO_DBS}; do
+    echo "  -- ${db}"
+    mono exec -T db pg_dump -U postgres "${db}" | gzip > "${dir}/${db}.sql.gz"
+  done
+  echo "backup complete: ${dir}"
+}
+
+mono_restore() { # FILE FLAG
+  local file="${1:?usage: ops mono restore FILE --yes}" flag="${2:-}"
+  require_yes "${flag}" "restore ${file} into monolith postgres (destructive)"
+  [ -f "${file}" ] || die "no such file: ${file}"
+  local db
+  db="$(basename "${file}" .sql.gz)"
+  case " ${MONO_DBS} " in *" ${db} "*) ;; *) die "dump name '${db}' not one of: ${MONO_DBS}";; esac
+  gunzip -c "${file}" | mono exec -T db psql -v ON_ERROR_STOP=1 -U postgres -d "${db}" >/dev/null
+  echo "restore complete: ${db}"
+}
+
 cmd_micro() {
   local action="${1:-}"; shift || true
   case "${action}" in
@@ -153,9 +201,16 @@ cmd_micro() {
 cmd_mono() {
   local action="${1:-}"; shift || true
   case "${action}" in
-    build|start|stop|status|logs|psql|backup|restore)
-      die "mono ${action}: not implemented yet" ;;
-    *) die "unknown mono action '${action}' (see: ops help)" ;;
+    build)   docker build -t ofbiz-docker monolith/ ;;
+    start)   mono_start ;;
+    stop)    mono_stop ;;
+    status)  mono ps
+             curl -sk -o /dev/null -w "https://localhost:8443 -> HTTP %{http_code}\n" https://localhost:8443 || true ;;
+    logs)    mono logs -f ofbiz ;;
+    psql)    mono exec db psql -U ofbiz -d ofbizmaindb ;;
+    backup)  mono_backup ;;
+    restore) mono_restore "${1:-}" "${2:-}" ;;
+    *)       die "unknown mono action '${action}' (see: ops help)" ;;
   esac
 }
 
