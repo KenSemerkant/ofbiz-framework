@@ -37,11 +37,11 @@ ops mono stop         # compose down; STOP_ALL=1 also wipes volumes
 ops mono status       # compose ps + curl -k https://localhost:8443
 ops mono logs         # compose logs -f ofbiz
 ops mono psql         # compose exec db psql -U ofbiz
-ops mono backup       # pg_dump ofbiz -> backups/mono/<ts>.sql.gz
+ops mono backup       # pg_dump all mono DBs (ofbizmaindb/olap/tenant) -> backups/mono/<ts>/
 ops mono restore FILE # requires --yes; pipe dump into db container
 ```
 
-`S` = deployment name among the 15 `-svc` services (identity, audit, notification, search, party, product, inventory, order, billing, finance, manufacturing, workeffort, humanres, content, marketing) or `gateway`. Bash tab completion registered at script bottom.
+`S` = deployment name among the 15 `-svc` services (identity, audit, notification, search, party, product, inventory, order, billing, finance, manufacturing, workeffort, humanres, content, marketing) or `gateway`. Tab completion dropped — a child process cannot register completions in the parent shell; would require sourcing the dispatcher.
 
 ## Non-goals
 
