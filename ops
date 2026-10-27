@@ -66,6 +66,31 @@ ops — unified operations toolkit
 EOF
 }
 
+micro_backup() {
+  local dir="backups/micro/$(ts)" db
+  mkdir -p "${dir}"
+  for db in ${SVC_DBS}; do
+    echo "  -- ${db}"
+    kube -n "${NS}" exec "${PG_POD}" -- pg_dump -U "${db}" "${db}" | gzip > "${dir}/${db}.sql.gz"
+  done
+  echo "backup complete: ${dir}"
+}
+
+micro_restore() { # DIR FLAG
+  local dir="${1:?usage: ops micro restore DIR --yes}" flag="${2:-}"
+  require_yes "${flag}" "restore SQL dumps from ${dir} into cluster postgres (destructive)"
+  [ -d "${dir}" ] || die "no such directory: ${dir}"
+  local f db
+  for f in "${dir}"/*.sql.gz; do
+    [ -e "${f}" ] || die "no *.sql.gz dumps found in ${dir}"
+    db="$(basename "${f}" .sql.gz)"
+    case " ${SVC_DBS} " in *" ${db} "*) ;; *) die "dump name '${db}' is not a known service DB";; esac
+    echo "  -- restoring ${db}"
+    gunzip -c "${f}" | kube -n "${NS}" exec -i "${PG_POD}" -- psql -U "${db}" -d "${db}" >/dev/null
+  done
+  echo "restore complete"
+}
+
 micro_fwd() {
   if [ "${1:-}" = stop ]; then
     [ -f "${FWD_PIDS}" ] || die "no forwards running"
