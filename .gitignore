@@ -45,3 +45,4 @@ node_modules/
 .codegraph/
 backups/
 monolith/docker/examples/postgres-demo/docker-compose.override.yml
+monolith/docker/examples/postgres-demo/logs/
