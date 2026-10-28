@@ -48,7 +48,8 @@ ops — unified operations toolkit
   ops micro status        pods + deployments + gateway endpoint
   ops micro logs S        follow logs of deployment S
   ops micro restart S     rollout restart + status of deployment S
-  ops micro deploy        rebuild + redeploy all services (platform/services/10-deploy.sh)
+  ops micro deploy [ --services=A,B ]
+                          rebuild + redeploy; no flag = all 16 (identity+gateway always)
   ops micro verify        run platform/services/20-verify.sh
   ops micro seed          run platform/services/40-seed-demo.sh
   ops micro backup        pg_dump all service DBs -> backups/micro/<ts>/
@@ -190,7 +191,7 @@ cmd_micro() {
     restart) check_deploy "${1:-}"
              kube -n "${NS}" rollout restart "deploy/${1}"
              kube -n "${NS}" rollout status "deploy/${1}" ;;
-    deploy)  sh platform/services/10-deploy.sh ;;
+    deploy)  sh platform/services/10-deploy.sh "$@" ;;
     verify)  sh platform/services/20-verify.sh ;;
     seed)    sh platform/services/40-seed-demo.sh ;;
     backup)  micro_backup ;;

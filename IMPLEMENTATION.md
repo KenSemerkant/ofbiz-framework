@@ -345,6 +345,12 @@ backend readiness; each tier ships SPA + spec + e2e green.
   visit tracking, address-match maps (archived data, no path).
 - **P10-F3 (M):** Unified ops toolkit `ops` (root dispatcher: micro up/down/status/logs/restart/deploy/verify/seed/backup/restore/fwd + mono build/start/stop/status/logs/psql/backup/restore via postgres-demo compose, durable pgdata). AC: [x] `bash -n ops` clean [x] `ops help` lists all 19 subcommands [x] `ops micro status|restart|backup` green on live cluster [x] `ops mono start` → https://localhost:8443 responds (HTTP 404 root; TLS+Tomcat serving), restart keeps pgdata (0 initdb lines on second start) [x] backups land in gitignored `backups/`. Spec: docs/superpowers/specs/2026-10-26-ops-toolkit-design.md — plan: docs/superpowers/plans/2026-10-27-ops-toolkit.md
 
+## PHASE 11 — Adopter subset deployment (gap analysis follow-up)
+
+Rationale: docs/analysis/2026-10-28-monolith-vs-microservices-gap-analysis.md §3/§5 — per-service deployability exists but `10-deploy.sh` assumed all-16; no subset path for teams building industry-specific stacks on a chosen slice.
+
+- **P11-F2 (M):** Subset deployment in `platform/services/10-deploy.sh`: `--services=svc1,svc2` flag; identity-svc+gateway forced as platform floor; fail-loud validation of sync deps (order-svc←party/product/inventory, humanres-svc←party) and unknown names; phases (ensure_db, build_image, Kafka PEM, helm, Garage, rollout) gated to selection; no flag = all sixteen, unchanged. AC: [x] `bash -n` clean [x] no-flag run deploys all sixteen (unchanged behavior; verified 2026-10-28 after Docker-VM disk prune) [x] `--services=party-svc` deploys identity-svc+gateway+party-svc only, rollout green on kind [x] `--services=bogus` exits 1 with valid-name list [x] `--services=order-svc` (no deps) exits 1 naming the missing dependency [x] `--services=humanres-svc` without party-svc exits 1. Evidence: gap-analysis doc §3 (G1/G2 partially closed; minimum-footprint doc remains open).
+
 ---
 
 ## Cross-Phase Working Agreements

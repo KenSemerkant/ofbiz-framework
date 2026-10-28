@@ -13,7 +13,57 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 NS="ofbiz"
-TAG="${1:-local}"
+
+# P11-F2 subset deployment: ./10-deploy.sh [tag] [--services=svc1,svc2,...]
+# No flag = all sixteen services (backward compatible). identity-svc and
+# gateway are always deployed (platform floor: OIDC issuer + edge routing).
+# Sync dependencies are validated, never auto-added: order-svc requires
+# party/product/inventory (placeOrder saga); humanres-svc requires party-svc
+# (onboarding role grant). Event-only consumers idle when their producers
+# are absent — safe to omit freely.
+TAG="local"
+SERVICES="all"
+for arg in "$@"; do
+  case "${arg}" in
+    --services=*) SERVICES="${arg#--services=}" ;;
+    *) TAG="${arg}" ;;
+  esac
+done
+
+ALL_SERVICES="identity-svc gateway audit-svc notification-svc search-svc party-svc product-svc inventory-svc order-svc billing-svc finance-svc manufacturing-svc workeffort-svc humanres-svc content-svc marketing-svc"
+
+want() { # 0 iff service is in the selection (no selection = all)
+  if [ "${SERVICES}" = "all" ]; then return 0; fi
+  case ",${SERVICES}," in *",$1,"*) return 0 ;; esac
+  return 1
+}
+
+is_known() { # 0 iff name is one of the sixteen services
+  for k in ${ALL_SERVICES}; do
+    if [ "${k}" = "$1" ]; then return 0; fi
+  done
+  return 1
+}
+
+if [ "${SERVICES}" != "all" ]; then
+  for s in ${SERVICES//,/ }; do
+    if ! is_known "${s}"; then
+      echo "ERROR: unknown service '${s}'. Valid: ${ALL_SERVICES}" >&2
+      exit 1
+    fi
+  done
+  SERVICES="identity-svc,gateway,${SERVICES}" # platform floor
+  if want order-svc; then
+    for dep in party-svc product-svc inventory-svc; do
+      want "${dep}" || { echo "ERROR: order-svc requires ${dep} (placeOrder saga calls it synchronously). Add it to --services." >&2; exit 1; }
+    done
+  fi
+  if want humanres-svc && ! want party-svc; then
+    echo "ERROR: humanres-svc requires party-svc (onboarding grants EMPLOYEE role via HTTP). Add it to --services." >&2
+    exit 1
+  fi
+  echo "==> Subset deploy: ${SERVICES} (identity-svc + gateway forced as platform floor)"
+fi
 
 KAFKA="ofbiz-kafka-bootstrap.${NS}.svc:9093"
 POSTGRES="postgres.${NS}.svc:5432"
@@ -37,18 +87,11 @@ ensure_db() { # role=password=dbname
     || kubectl -n "${NS}" exec postgres-0 -- psql -U admin -d postgres -c \
       "CREATE DATABASE $1 OWNER $1"
 }
-ensure_db party
-ensure_db product
-ensure_db inventory
-ensure_db search
-ensure_db orderdb
-ensure_db billing
-ensure_db finance
-ensure_db manufacturing
-ensure_db workeffort
-ensure_db humanres
-ensure_db content
-ensure_db marketing
+# P11-F2: only the databases of selected services
+DB_OF="party-svc:party product-svc:product inventory-svc:inventory search-svc:search order-svc:orderdb billing-svc:billing finance-svc:finance manufacturing-svc:manufacturing workeffort-svc:workeffort humanres-svc:humanres content-svc:content marketing-svc:marketing"
+for pair in ${DB_OF}; do
+  if want "${pair%%:*}"; then ensure_db "${pair##*:}"; fi
+done
 
 echo "==> [2/4] Topics + KafkaUsers"
 sh "${ROOT}/platform/helm/topics/10-create.sh"
@@ -61,22 +104,23 @@ build_image() { # name gradle-project dir
   docker build -q -t "${name}:${TAG}" "${ROOT}/${dir}" >/dev/null
   kind load docker-image "${name}:${TAG}" --name ofbiz >/dev/null
 }
+# identity-svc + gateway are the always-deployed platform floor
 build_image identity-svc ":microservices:identity-svc:identity-adapters:adapters-rest:bootJar" microservices/identity-svc
 build_image gateway ":microservices:gateway:bootJar" microservices/gateway
-build_image audit-svc ":microservices:audit-svc:audit-adapters:adapters-rest:bootJar" microservices/audit-svc
-build_image notification-svc ":microservices:notification-svc:notification-adapters:adapters-rest:bootJar" microservices/notification-svc
-build_image search-svc ":microservices:search-svc:search-adapters:adapters-rest:bootJar" microservices/search-svc
-build_image party-svc ":microservices:party-svc:party-adapters:adapters-rest:bootJar" microservices/party-svc
-build_image product-svc ":microservices:product-svc:product-adapters:adapters-rest:bootJar" microservices/product-svc
-build_image inventory-svc ":microservices:inventory-svc:inventory-adapters:adapters-rest:bootJar" microservices/inventory-svc
-build_image order-svc ":microservices:order-svc:order-adapters:adapters-rest:bootJar" microservices/order-svc
-build_image billing-svc ":microservices:billing-svc:billing-adapters:adapters-rest:bootJar" microservices/billing-svc
-build_image finance-svc ":microservices:finance-svc:finance-adapters:adapters-rest:bootJar" microservices/finance-svc
-build_image manufacturing-svc ":microservices:manufacturing-svc:manufacturing-adapters:adapters-rest:bootJar" microservices/manufacturing-svc
-build_image workeffort-svc ":microservices:workeffort-svc:workeffort-adapters:adapters-rest:bootJar" microservices/workeffort-svc
-build_image humanres-svc ":microservices:humanres-svc:humanres-adapters:adapters-rest:bootJar" microservices/humanres-svc
-build_image content-svc ":microservices:content-svc:content-adapters:adapters-rest:bootJar" microservices/content-svc
-build_image marketing-svc ":microservices:marketing-svc:marketing-adapters:adapters-rest:bootJar" microservices/marketing-svc
+if want audit-svc; then build_image audit-svc ":microservices:audit-svc:audit-adapters:adapters-rest:bootJar" microservices/audit-svc; fi
+if want notification-svc; then build_image notification-svc ":microservices:notification-svc:notification-adapters:adapters-rest:bootJar" microservices/notification-svc; fi
+if want search-svc; then build_image search-svc ":microservices:search-svc:search-adapters:adapters-rest:bootJar" microservices/search-svc; fi
+if want party-svc; then build_image party-svc ":microservices:party-svc:party-adapters:adapters-rest:bootJar" microservices/party-svc; fi
+if want product-svc; then build_image product-svc ":microservices:product-svc:product-adapters:adapters-rest:bootJar" microservices/product-svc; fi
+if want inventory-svc; then build_image inventory-svc ":microservices:inventory-svc:inventory-adapters:adapters-rest:bootJar" microservices/inventory-svc; fi
+if want order-svc; then build_image order-svc ":microservices:order-svc:order-adapters:adapters-rest:bootJar" microservices/order-svc; fi
+if want billing-svc; then build_image billing-svc ":microservices:billing-svc:billing-adapters:adapters-rest:bootJar" microservices/billing-svc; fi
+if want finance-svc; then build_image finance-svc ":microservices:finance-svc:finance-adapters:adapters-rest:bootJar" microservices/finance-svc; fi
+if want manufacturing-svc; then build_image manufacturing-svc ":microservices:manufacturing-svc:manufacturing-adapters:adapters-rest:bootJar" microservices/manufacturing-svc; fi
+if want workeffort-svc; then build_image workeffort-svc ":microservices:workeffort-svc:workeffort-adapters:adapters-rest:bootJar" microservices/workeffort-svc; fi
+if want humanres-svc; then build_image humanres-svc ":microservices:humanres-svc:humanres-adapters:adapters-rest:bootJar" microservices/humanres-svc; fi
+if want content-svc; then build_image content-svc ":microservices:content-svc:content-adapters:adapters-rest:bootJar" microservices/content-svc; fi
+if want marketing-svc; then build_image marketing-svc ":microservices:marketing-svc:marketing-adapters:adapters-rest:bootJar" microservices/marketing-svc; fi
 
 # Reshape a Strimzi KafkaUser secret into the file layout Boot 4 pem ssl
 # bundles expect: ca.crt (truststore) + user.crt/user.key (keystore).
@@ -94,7 +138,10 @@ kafka_pem_secret() { # kafkauser name
     --dry-run=client -o yaml | kubectl -n "${NS}" apply -f -
   rm -f /tmp/kafka-ca.crt /tmp/kafka-user.key /tmp/kafka-user.crt
 }
-for user in identity-svc audit-svc notification-svc search-svc party-svc product-svc inventory-svc order-svc billing-svc finance-svc manufacturing-svc workeffort-svc humanres-svc content-svc marketing-svc; do kafka_pem_secret "${user}"; done
+for user in ${ALL_SERVICES}; do
+  if [ "${user}" = "gateway" ]; then continue; fi # gateway holds no KafkaUser
+  if want "${user}"; then kafka_pem_secret "${user}"; fi
+done
 
 # helm args to mount the PEM bundle and speak SSL to Kafka. The pem bundle
 # itself is declared in each service's application.yaml (env vars cannot
@@ -142,6 +189,7 @@ helm -n "${NS}" upgrade --install gateway "${CHART}" \
   --set-string 'env[8].name=TRACING_SAMPLING' --set-string 'env[8].value=1.0' \
   --set-string 'env[9].name=GATEWAY_PRODUCT_URI' --set-string "env[9].value=http://product-svc.${NS}.svc:8080"
 
+if want audit-svc; then
 TLS_ARGS_AUDIT="$(tls_args audit-svc)"
 # shellcheck disable=SC2086
 helm -n "${NS}" upgrade --install audit-svc "${CHART}" \
@@ -153,9 +201,11 @@ helm -n "${NS}" upgrade --install audit-svc "${CHART}" \
   --set-string 'env[2].name=AUDIT_DB_USER' --set-string 'env[2].value=audit' \
   --set-string 'env[3].name=AUDIT_DB_PASSWORD' --set-string 'env[3].value=audit' \
   --set-string "env[4].name=KAFKA_BOOTSTRAP_SERVERS" --set-string "env[4].value=${KAFKA}"
+fi
 
 # P5: staging mail (mailpit) speaks SMTP on 8080 + the eager client-first
 # adapter — the local kind datapath eats banner-first SMTP (issues/P5-GATE.md).
+if want notification-svc; then
 TLS_ARGS_NOTIFICATION="$(tls_args notification-svc)"
 # shellcheck disable=SC2086
 helm -n "${NS}" upgrade --install notification-svc "${CHART}" \
@@ -172,7 +222,9 @@ helm -n "${NS}" upgrade --install notification-svc "${CHART}" \
   --set-string 'env[6].name=SMTP_USER' --set-string 'env[6].value=' \
   --set-string 'env[7].name=SMTP_PASSWORD' --set-string 'env[7].value=' \
   --set-string "env[8].name=KAFKA_BOOTSTRAP_SERVERS" --set-string "env[8].value=${KAFKA}"
+fi
 
+if want search-svc; then
 TLS_ARGS_SEARCH="$(tls_args search-svc)"
 # shellcheck disable=SC2086
 helm -n "${NS}" upgrade --install search-svc "${CHART}" \
@@ -188,7 +240,9 @@ helm -n "${NS}" upgrade --install search-svc "${CHART}" \
   --set-string 'env[5].name=SEARCH_DB_USER' --set-string 'env[5].value=search' \
   --set-string 'env[6].name=SEARCH_DB_PASSWORD' --set-string 'env[6].value=search' \
   --set-string 'env[7].name=JAVA_TOOL_OPTIONS' --set-string 'env[7].value=-XX:MaxRAMPercentage=75.0'
+fi
 
+if want party-svc; then
 TLS_ARGS_PARTY="$(tls_args party-svc)"
 # shellcheck disable=SC2086
 helm -n "${NS}" upgrade --install party-svc "${CHART}" \
@@ -203,7 +257,9 @@ helm -n "${NS}" upgrade --install party-svc "${CHART}" \
   --set-string "env[4].name=KAFKA_BOOTSTRAP_SERVERS" --set-string "env[4].value=${KAFKA}" \
   --set-string 'env[5].name=PARTY_GRPC_PORT' --set-string 'env[5].value=9090' \
   --set-string 'env[6].name=JAVA_TOOL_OPTIONS' --set-string 'env[6].value=-XX:MaxRAMPercentage=75.0'
+fi
 
+if want product-svc; then
 TLS_ARGS_PRODUCT="$(tls_args product-svc)"
 # shellcheck disable=SC2086
 helm -n "${NS}" upgrade --install product-svc "${CHART}" \
@@ -216,12 +272,12 @@ helm -n "${NS}" upgrade --install product-svc "${CHART}" \
   --set-string 'env[3].name=PRODUCT_DB_PASSWORD' --set-string 'env[3].value=product' \
   --set-string "env[4].name=KAFKA_BOOTSTRAP_SERVERS" --set-string "env[4].value=${KAFKA}" \
   --set-string 'env[5].name=JAVA_TOOL_OPTIONS' --set-string 'env[5].value=-XX:MaxRAMPercentage=75.0'
-
-TLS_ARGS_INVENTORY="$(tls_args inventory-svc)"
+fi
 
 # P4-GATE: order-svc — own DB,
 # east-west integration URLs for the placeOrder saga (party/product/inventory).
-TLS_ARGS_ORDER="$(tls_args order-svc)"
+if want inventory-svc; then
+TLS_ARGS_INVENTORY="$(tls_args inventory-svc)"
 # shellcheck disable=SC2086
 helm -n "${NS}" upgrade --install inventory-svc "${CHART}" \
   --set image.repository=inventory-svc --set image.tag="${TAG}" \
@@ -233,7 +289,10 @@ helm -n "${NS}" upgrade --install inventory-svc "${CHART}" \
   --set-string 'env[3].name=INVENTORY_DB_PASSWORD' --set-string 'env[3].value=inventory' \
   --set-string "env[4].name=KAFKA_BOOTSTRAP_SERVERS" --set-string "env[4].value=${KAFKA}" \
   --set-string 'env[5].name=JAVA_TOOL_OPTIONS' --set-string 'env[5].value=-XX:MaxRAMPercentage=75.0'
+fi
 
+if want order-svc; then
+TLS_ARGS_ORDER="$(tls_args order-svc)"
 # shellcheck disable=SC2086
 helm -n "${NS}" upgrade --install order-svc "${CHART}" \
   --set image.repository=order-svc --set image.tag="${TAG}" \
@@ -248,9 +307,11 @@ helm -n "${NS}" upgrade --install order-svc "${CHART}" \
   --set-string "env[6].name=ORDER_PRODUCT_BASE_URL" --set-string "env[6].value=http://product-svc.${NS}.svc:8080" \
   --set-string "env[7].name=ORDER_INVENTORY_BASE_URL" --set-string "env[7].value=http://inventory-svc.${NS}.svc:8080" \
   --set-string 'env[8].name=JAVA_TOOL_OPTIONS' --set-string 'env[8].value=-XX:MaxRAMPercentage=75.0'
+fi
 
 # P5-GATE: billing-svc — own DB, Kafka for the P4 invoicerequested
 # handshake + notification.requested emit.
+if want billing-svc; then
 TLS_ARGS_BILLING="$(tls_args billing-svc)"
 # shellcheck disable=SC2086
 helm -n "${NS}" upgrade --install billing-svc "${CHART}" \
@@ -263,8 +324,10 @@ helm -n "${NS}" upgrade --install billing-svc "${CHART}" \
   --set-string 'env[3].name=BILLING_DB_PASSWORD' --set-string 'env[3].value=billing' \
   --set-string "env[4].name=KAFKA_BOOTSTRAP_SERVERS" --set-string "env[4].value=${KAFKA}" \
   --set-string 'env[5].name=JAVA_TOOL_OPTIONS' --set-string 'env[5].value=-XX:MaxRAMPercentage=75.0'
+fi
 
 # P5-GATE: finance-svc — own DB, consumes billing invoice events.
+if want finance-svc; then
 TLS_ARGS_FINANCE="$(tls_args finance-svc)"
 # shellcheck disable=SC2086
 helm -n "${NS}" upgrade --install finance-svc "${CHART}" \
@@ -277,10 +340,12 @@ helm -n "${NS}" upgrade --install finance-svc "${CHART}" \
   --set-string 'env[3].name=FINANCE_DB_PASSWORD' --set-string 'env[3].value=finance' \
   --set-string "env[4].name=KAFKA_BOOTSTRAP_SERVERS" --set-string "env[4].value=${KAFKA}" \
   --set-string 'env[5].name=JAVA_TOOL_OPTIONS' --set-string 'env[5].value=-XX:MaxRAMPercentage=75.0'
+fi
 
 # P6-GATE: long-tail services — own DBs; manufacturing/marketing consume
 # order+inventory events, humanres consumes party events + calls party-svc,
 # content uses the Garage S3 API (ADR-008).
+if want manufacturing-svc; then
 TLS_ARGS_MFG="$(tls_args manufacturing-svc)"
 # shellcheck disable=SC2086
 helm -n "${NS}" upgrade --install manufacturing-svc "${CHART}" \
@@ -293,7 +358,9 @@ helm -n "${NS}" upgrade --install manufacturing-svc "${CHART}" \
   --set-string 'env[3].name=MANUFACTURING_DB_PASSWORD' --set-string 'env[3].value=manufacturing' \
   --set-string "env[4].name=KAFKA_BOOTSTRAP_SERVERS" --set-string "env[4].value=${KAFKA}" \
   --set-string 'env[5].name=JAVA_TOOL_OPTIONS' --set-string 'env[5].value=-XX:MaxRAMPercentage=75.0'
+fi
 
+if want workeffort-svc; then
 TLS_ARGS_WE="$(tls_args workeffort-svc)"
 # shellcheck disable=SC2086
 helm -n "${NS}" upgrade --install workeffort-svc "${CHART}" \
@@ -306,7 +373,9 @@ helm -n "${NS}" upgrade --install workeffort-svc "${CHART}" \
   --set-string 'env[3].name=WORKEFFORT_DB_PASSWORD' --set-string 'env[3].value=workeffort' \
   --set-string "env[4].name=KAFKA_BOOTSTRAP_SERVERS" --set-string "env[4].value=${KAFKA}" \
   --set-string 'env[5].name=JAVA_TOOL_OPTIONS' --set-string 'env[5].value=-XX:MaxRAMPercentage=75.0'
+fi
 
+if want humanres-svc; then
 TLS_ARGS_HR="$(tls_args humanres-svc)"
 # shellcheck disable=SC2086
 helm -n "${NS}" upgrade --install humanres-svc "${CHART}" \
@@ -320,10 +389,12 @@ helm -n "${NS}" upgrade --install humanres-svc "${CHART}" \
   --set-string "env[4].name=KAFKA_BOOTSTRAP_SERVERS" --set-string "env[4].value=${KAFKA}" \
   --set-string "env[5].name=HUMANRES_PARTY_BASE_URL" --set-string "env[5].value=http://party-svc.${NS}.svc:8080" \
   --set-string 'env[6].name=JAVA_TOOL_OPTIONS' --set-string 'env[6].value=-XX:MaxRAMPercentage=75.0'
+fi
 
 # content-svc object storage: (re)issue the Garage ofbiz-s3 key — same
 # rotation semantics as platform/storage/20-verify.sh (secret prints only
 # at creation, so we recreate it on every deploy run).
+if want content-svc; then
 GARAGE_POD="garage-0"
 kubectl -n storage exec "${GARAGE_POD}" -- /garage -c /etc/garage.toml key info ofbiz-s3 >/dev/null 2>&1 \
   && kubectl -n storage exec "${GARAGE_POD}" -- /garage -c /etc/garage.toml key delete --yes ofbiz-s3 >/dev/null 2>&1 || true
@@ -350,7 +421,9 @@ helm -n "${NS}" upgrade --install content-svc "${CHART}" \
   --set-string "env[7].name=CONTENT_S3_SECRET_KEY" --set-string "env[7].value=${GARAGE_SECRET}" \
   --set-string 'env[8].name=CONTENT_S3_BUCKET' --set-string 'env[8].value=ofbiz-content' \
   --set-string 'env[9].name=JAVA_TOOL_OPTIONS' --set-string 'env[9].value=-XX:MaxRAMPercentage=75.0'
+fi
 
+if want marketing-svc; then
 TLS_ARGS_MKT="$(tls_args marketing-svc)"
 # shellcheck disable=SC2086
 helm -n "${NS}" upgrade --install marketing-svc "${CHART}" \
@@ -363,9 +436,16 @@ helm -n "${NS}" upgrade --install marketing-svc "${CHART}" \
   --set-string 'env[3].name=MARKETING_DB_PASSWORD' --set-string 'env[3].value=marketing' \
   --set-string "env[4].name=KAFKA_BOOTSTRAP_SERVERS" --set-string "env[4].value=${KAFKA}" \
   --set-string 'env[5].name=JAVA_TOOL_OPTIONS' --set-string 'env[5].value=-XX:MaxRAMPercentage=75.0'
+fi
 
-for deploy in identity-svc gateway audit-svc notification-svc search-svc party-svc product-svc inventory-svc order-svc billing-svc finance-svc manufacturing-svc workeffort-svc humanres-svc content-svc marketing-svc; do
-  kubectl -n "${NS}" rollout status "deploy/${deploy}" --timeout=300s
+for deploy in ${ALL_SERVICES}; do
+  if want "${deploy}"; then
+    kubectl -n "${NS}" rollout status "deploy/${deploy}" --timeout=300s
+  fi
 done
 
-echo "DONE — sixteen services deployed (P1..P6: platform + party + product/inventory + order + billing/finance + long-tail)"
+if [ "${SERVICES}" = "all" ]; then
+  echo "DONE — sixteen services deployed (P1..P6: platform + party + product/inventory + order + billing/finance + long-tail)"
+else
+  echo "DONE — subset deployed: ${SERVICES}"
+fi
